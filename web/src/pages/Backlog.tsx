@@ -169,6 +169,7 @@ export const Backlog: React.FC = () => {
   };
 
   const filteredTickets = tickets.filter(t => {
+    if (t.type === 'Epic') return false;
     if (selectedAssigneeUuids.length > 0 && (!t.assignee || !selectedAssigneeUuids.includes(t.assignee.uuid))) {
       return false;
     }
