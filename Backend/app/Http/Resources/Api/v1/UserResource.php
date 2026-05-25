@@ -28,8 +28,11 @@ class UserResource extends JsonResource
                 // Safely get the role name from the pivot
                 $roleName = 'Unknown';
                 if ($org->pivot) {
-                    $role = \App\Models\Role::find($org->pivot->role_id);
-                    $roleName = $role ? $role->name : 'Unknown';
+                    static $roleCache = [];
+                    if (empty($roleCache)) {
+                        $roleCache = \App\Models\Role::all()->pluck('name', 'id')->toArray();
+                    }
+                    $roleName = $roleCache[$org->pivot->role_id] ?? 'Unknown';
                 }
                 return [
                     'uuid' => $org->uuid,
@@ -37,8 +40,12 @@ class UserResource extends JsonResource
                     'role' => $roleName,
                 ];
             }),
-            'permissions' => $this->getPermissionsList(),
-            'modules' => $this->getFilteredModules(),
+            'permissions' => $this->when($request->is('api/*/me') || $request->is('api/*/login') || $request->is('api/*/google-login'), function () {
+                return $this->getPermissionsList();
+            }),
+            'modules' => $this->when($request->is('api/*/me') || $request->is('api/*/login') || $request->is('api/*/google-login'), function () {
+                return $this->getFilteredModules();
+            }),
             'created_at' => $this->created_at->toDateTimeString(),
             'updated_at' => $this->updated_at->toDateTimeString(),
         ];
