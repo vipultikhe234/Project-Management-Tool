@@ -77,6 +77,7 @@ RUN echo '#!/bin/sh' > /usr/local/bin/docker-entrypoint.sh \
     && echo 'PORT=${PORT:-80}' >> /usr/local/bin/docker-entrypoint.sh \
     && echo 'sed -i "s/Listen 80/Listen \${PORT}/g" /etc/apache2/ports.conf' >> /usr/local/bin/docker-entrypoint.sh \
     && echo 'sed -i "s/<VirtualHost \*:80>/<VirtualHost \*:\${PORT}>/g" /etc/apache2/sites-available/000-default.conf' >> /usr/local/bin/docker-entrypoint.sh \
+    && echo 'mkdir -p database && touch database/database.sqlite && chown www-data:www-data database/database.sqlite' >> /usr/local/bin/docker-entrypoint.sh \
     && echo 'php artisan migrate --force' >> /usr/local/bin/docker-entrypoint.sh \
     && echo 'php artisan db:seed --force' >> /usr/local/bin/docker-entrypoint.sh \
     && echo 'exec apache2-foreground' >> /usr/local/bin/docker-entrypoint.sh \
