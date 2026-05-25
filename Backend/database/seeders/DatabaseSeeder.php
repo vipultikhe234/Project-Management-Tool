@@ -144,117 +144,117 @@ class DatabaseSeeder extends Seeder
         //         ]
         //     );
 
-        //     // 7. Seed Default Modules & Sub-modules
-        //     $defaultModules = [
-        //         [
-        //             'name' => 'Your Work',
-        //             'slug' => 'dashboard',
-        //             'icon' => 'LayoutDashboard',
-        //             'sort_order' => 1,
-        //             'sub_modules' => [
-        //                 ['name' => 'Your Work', 'slug' => 'dashboard_view', 'route' => '/your-work', 'sort_order' => 1],
-        //             ]
-        //         ],
-        //         [
-        //             'name' => 'Projects',
-        //             'slug' => 'projects',
-        //             'icon' => 'Folder',
-        //             'sort_order' => 2,
-        //             'sub_modules' => [
-        //                 ['name' => 'Manage Projects', 'slug' => 'projects_view', 'route' => '/projects', 'sort_order' => 1],
-        //             ]
-        //         ],
-        //         [
-        //             'name' => 'Organizations',
-        //             'slug' => 'organizations',
-        //             'icon' => 'Building2',
-        //             'sort_order' => 3,
-        //             'sub_modules' => [
-        //                 ['name' => 'Organizations', 'slug' => 'organizations_view', 'route' => '/organizations', 'sort_order' => 1],
-        //             ]
-        //         ],
-        //         [
-        //             'name' => 'Users',
-        //             'slug' => 'users',
-        //             'icon' => 'Users',
-        //             'sort_order' => 4,
-        //             'sub_modules' => [
-        //                 ['name' => 'Users', 'slug' => 'users_view', 'route' => '/users', 'sort_order' => 1],
-        //             ]
-        //         ],
-        //         [
-        //             'name' => 'Board',
-        //             'slug' => 'board',
-        //             'icon' => 'Kanban',
-        //             'sort_order' => 5,
-        //             'sub_modules' => [
-        //                 ['name' => 'Board', 'slug' => 'board_view', 'route' => '/board', 'sort_order' => 1],
-        //             ]
-        //         ],
-        //         [
-        //             'name' => 'Backlog',
-        //             'slug' => 'backlog',
-        //             'icon' => 'ListTodo',
-        //             'sort_order' => 6,
-        //             'sub_modules' => [
-        //                 ['name' => 'Backlog', 'slug' => 'backlog_view', 'route' => '/backlog', 'sort_order' => 1],
-        //             ]
-        //         ],
-        //         [
-        //             'name' => 'Reports',
-        //             'slug' => 'reports',
-        //             'icon' => 'BarChart3',
-        //             'sort_order' => 7,
-        //             'sub_modules' => [
-        //                 ['name' => 'Reports', 'slug' => 'reports_view', 'route' => '/reports', 'sort_order' => 1],
-        //             ]
-        //         ],
+            // 7. Seed Default Modules & Sub-modules
+            $defaultModules = [
+                [
+                    'name' => 'Your Work',
+                    'slug' => 'dashboard',
+                    'icon' => 'LayoutDashboard',
+                    'sort_order' => 1,
+                    'sub_modules' => [
+                        ['name' => 'Your Work', 'slug' => 'dashboard_view', 'route' => '/your-work', 'sort_order' => 1],
+                    ]
+                ],
+                [
+                    'name' => 'Projects',
+                    'slug' => 'projects',
+                    'icon' => 'Folder',
+                    'sort_order' => 2,
+                    'sub_modules' => [
+                        ['name' => 'Manage Projects', 'slug' => 'projects_view', 'route' => '/projects', 'sort_order' => 1],
+                    ]
+                ],
+                [
+                    'name' => 'Organizations',
+                    'slug' => 'organizations',
+                    'icon' => 'Building2',
+                    'sort_order' => 3,
+                    'sub_modules' => [
+                        ['name' => 'Organizations', 'slug' => 'organizations_view', 'route' => '/organizations', 'sort_order' => 1],
+                    ]
+                ],
+                [
+                    'name' => 'Users',
+                    'slug' => 'users',
+                    'icon' => 'Users',
+                    'sort_order' => 4,
+                    'sub_modules' => [
+                        ['name' => 'Users', 'slug' => 'users_view', 'route' => '/users', 'sort_order' => 1],
+                    ]
+                ],
+                [
+                    'name' => 'Board',
+                    'slug' => 'board',
+                    'icon' => 'Kanban',
+                    'sort_order' => 5,
+                    'sub_modules' => [
+                        ['name' => 'Board', 'slug' => 'board_view', 'route' => '/board', 'sort_order' => 1],
+                    ]
+                ],
+                [
+                    'name' => 'Backlog',
+                    'slug' => 'backlog',
+                    'icon' => 'ListTodo',
+                    'sort_order' => 6,
+                    'sub_modules' => [
+                        ['name' => 'Backlog', 'slug' => 'backlog_view', 'route' => '/backlog', 'sort_order' => 1],
+                    ]
+                ],
+                [
+                    'name' => 'Reports',
+                    'slug' => 'reports',
+                    'icon' => 'BarChart3',
+                    'sort_order' => 7,
+                    'sub_modules' => [
+                        ['name' => 'Reports', 'slug' => 'reports_view', 'route' => '/reports', 'sort_order' => 1],
+                    ]
+                ],
 
-        //         [
-        //             'name' => 'Access Control',
-        //             'slug' => 'access_control',
-        //             'icon' => 'Shield',
-        //             'sort_order' => 9,
-        //             'sub_modules' => [
-        //                 ['name' => 'Roles & Access', 'slug' => 'access_control_view', 'route' => '/access-control', 'sort_order' => 1],
-        //                 ['name' => 'Modules Manager', 'slug' => 'modules_management_view', 'route' => '/modules-management', 'sort_order' => 2],
-        //             ]
-        //         ],
-        //         [
-        //             'name' => 'Project Settings',
-        //             'slug' => 'project_settings',
-        //             'icon' => 'Settings',
-        //             'sort_order' => 10,
-        //             'sub_modules' => [
-        //                 ['name' => 'Project Workflow', 'slug' => 'project_settings_view', 'route' => '/project-settings', 'sort_order' => 1],
-        //             ]
-        //         ],
-        //     ];
+                [
+                    'name' => 'Access Control',
+                    'slug' => 'access_control',
+                    'icon' => 'Shield',
+                    'sort_order' => 9,
+                    'sub_modules' => [
+                        ['name' => 'Roles & Access', 'slug' => 'access_control_view', 'route' => '/access-control', 'sort_order' => 1],
+                        ['name' => 'Modules Manager', 'slug' => 'modules_management_view', 'route' => '/modules-management', 'sort_order' => 2],
+                    ]
+                ],
+                [
+                    'name' => 'Project Settings',
+                    'slug' => 'project_settings',
+                    'icon' => 'Settings',
+                    'sort_order' => 10,
+                    'sub_modules' => [
+                        ['name' => 'Project Workflow', 'slug' => 'project_settings_view', 'route' => '/project-settings', 'sort_order' => 1],
+                    ]
+                ],
+            ];
 
-        //     foreach ($defaultModules as $modData) {
-        //         $module = Module::updateOrCreate(
-        //             ['slug' => $modData['slug']],
-        //             [
-        //                 'uuid' => (string) Str::uuid(),
-        //                 'name' => $modData['name'],
-        //                 'icon' => $modData['icon'],
-        //                 'sort_order' => $modData['sort_order'],
-        //             ]
-        //         );
+            foreach ($defaultModules as $modData) {
+                $module = Module::updateOrCreate(
+                    ['slug' => $modData['slug']],
+                    [
+                        'uuid' => (string) Str::uuid(),
+                        'name' => $modData['name'],
+                        'icon' => $modData['icon'],
+                        'sort_order' => $modData['sort_order'],
+                    ]
+                );
 
-        //         foreach ($modData['sub_modules'] as $subData) {
-        //             SubModule::updateOrCreate(
-        //                 ['slug' => $subData['slug']],
-        //                 [
-        //                     'uuid' => (string) Str::uuid(),
-        //                     'module_id' => $module->id,
-        //                     'name' => $subData['name'],
-        //                     'route' => $subData['route'],
-        //                     'sort_order' => $subData['sort_order'],
-        //                 ]
-        //             );
-        //         }
-        //     }
+                foreach ($modData['sub_modules'] as $subData) {
+                    SubModule::updateOrCreate(
+                        ['slug' => $subData['slug']],
+                        [
+                            'uuid' => (string) Str::uuid(),
+                            'module_id' => $module->id,
+                            'name' => $subData['name'],
+                            'route' => $subData['route'],
+                            'sort_order' => $subData['sort_order'],
+                        ]
+                    );
+                }
+            }
 
         //     // 8. Create 3 Organizations
         //     $organizationsData = [
