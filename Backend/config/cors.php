@@ -22,6 +22,7 @@ return [
     'allowed_origins' => [
         'http://localhost:5173',
         'http://127.0.0.1:5173',
+        'https://sprintnix.vercel.app',
         'https://projectmanagementtool-ip3m7c2ja-vipultikhe234s-projects.vercel.app',
     ],
 
