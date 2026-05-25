@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxml2-dev \
     libpq-dev \
     libsqlite3-dev \
+    libicu-dev \
     unzip \
     zip \
     && rm -rf /var/lib/apt/lists/*
