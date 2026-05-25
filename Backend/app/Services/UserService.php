@@ -45,6 +45,9 @@ class UserService
      */
     public function createUser(array $data): User
     {
+        if (isset($data['status'])) {
+            $data['status'] = strtoupper($data['status']);
+        }
         return DB::transaction(function () use ($data) {
             $user = User::create([
                 'uuid' => (string) Str::uuid(),
@@ -52,7 +55,7 @@ class UserService
                 'email' => $data['email'],
                 'password' => Hash::make($data['password']),
                 'role_id' => $data['role_id'],
-                'status' => $data['status'] ?? 'active',
+                'status' => $data['status'] ?? 'ACTIVE',
             ]);
 
             if (isset($data['organization_uuid'])) {
@@ -78,6 +81,9 @@ class UserService
      */
     public function updateUser(User $user, array $data): User
     {
+        if (isset($data['status'])) {
+            $data['status'] = strtoupper($data['status']);
+        }
         return DB::transaction(function () use ($user, $data) {
             if (isset($data['password']) && !empty($data['password'])) {
                 $data['password'] = Hash::make($data['password']);

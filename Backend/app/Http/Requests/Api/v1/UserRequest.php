@@ -32,7 +32,7 @@ class UserRequest extends FormRequest
             'password' => $this->isMethod('POST') ? 'required|string|min:8' : 'nullable|string|min:8',
             'role_id' => 'required|exists:roles,id',
             'organization_uuid' => 'sometimes|exists:organizations,uuid',
-            'status' => 'sometimes|string|in:active,inactive,suspended',
+            'status' => 'sometimes|string|in:active,inactive,suspended,ACTIVE,INACTIVE,SUSPENDED',
         ];
     }
 }
