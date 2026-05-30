@@ -28,7 +28,7 @@ class ProjectController extends Controller
 
         if ($orgUuid === 'all' || !$orgUuid) {
             if ($user->role?->slug === 'admin') {
-                $projects = Project::with(['boards', 'members.role'])->get();
+                $projects = Project::with(['boards', 'members.role', 'organization'])->get();
                 return ProjectResource::collection($projects);
             }
             

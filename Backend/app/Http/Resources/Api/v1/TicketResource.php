@@ -79,8 +79,26 @@ class TicketResource extends JsonResource
                     ],
                 ];
             }),
-            'comments_count' => $this->comments->count(),
-            'is_starred' => $request->user() ? $this->starredByUsers()->where('user_id', $request->user()->id)->exists() : false,
+            'comments_count' => $this->relationLoaded('comments') ? $this->comments->count() : $this->comments()->count(),
+            'comments' => $this->when($this->relationLoaded('comments') && $request->is('*/tickets/*') && !$request->is('*/tickets'), function () {
+                return $this->comments->map(function ($comment) {
+                    return [
+                        'uuid' => $comment->uuid,
+                        'body' => $comment->body,
+                        'user' => [
+                            'uuid' => $comment->user?->uuid,
+                            'name' => $comment->user?->name,
+                            'avatar' => $comment->user?->avatar ?? 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
+                        ],
+                        'created_at' => $comment->created_at->toDateTimeString(),
+                    ];
+                });
+            }),
+            'is_starred' => $request->user() ? (
+                $this->relationLoaded('starredByUsers') 
+                    ? $this->starredByUsers->contains('id', $request->user()->id) 
+                    : $this->starredByUsers()->where('user_id', $request->user()->id)->exists()
+            ) : false,
             'created_at' => $this->created_at->toDateTimeString(),
             'updated_at' => $this->updated_at->toDateTimeString(),
         ];

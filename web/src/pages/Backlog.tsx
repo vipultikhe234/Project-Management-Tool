@@ -146,7 +146,7 @@ export const Backlog: React.FC = () => {
     try {
       const boardUuid = activeProject.boards?.[0]?.uuid;
       
-      const [ticketsRes, sprintsRes, epicsRes] = await Promise.all([
+      const [ticketsRes, sprintsRes] = await Promise.all([
         api.get('/tickets', { params: { project_uuid: activeProject.uuid, organization_uuid: orgUuid, per_page: 500 } }),
         api.get('/sprints', { 
           params: { 
@@ -154,13 +154,13 @@ export const Backlog: React.FC = () => {
             project_uuid: activeProject.uuid, 
             organization_uuid: orgUuid 
           } 
-        }),
-        api.get('/tickets', { params: { project_uuid: activeProject.uuid, type: 'Epic', organization_uuid: orgUuid, per_page: 500 } })
+        })
       ]);
 
-      setTickets(ticketsRes.data.data);
-      setSprints(sprintsRes.data.data);
-      setEpics(epicsRes.data.data);
+      const allTickets = ticketsRes.data.data || [];
+      setTickets(allTickets);
+      setSprints(sprintsRes.data.data || []);
+      setEpics(allTickets.filter((t: any) => t.type === 'Epic'));
     } catch (err) {
       console.error('Failed to load project details', err);
     } finally {

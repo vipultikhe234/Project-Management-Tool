@@ -19,7 +19,24 @@ class TicketService
      */
     public function listTickets(array $filters, int $perPage = 50): LengthAwarePaginator
     {
-        $query = Ticket::with(['project', 'assignee', 'reporter', 'comments', 'attachments']);
+        $query = Ticket::with([
+            'project.organization',
+            'assignee',
+            'reporter',
+            'comments',
+            'attachments',
+            'sprint',
+            'parent',
+            'epic',
+            'subtasks',
+            'workLogs.user',
+            'starredByUsers' => function ($q) {
+                $userId = auth()->id();
+                if ($userId) {
+                    $q->where('users.id', $userId);
+                }
+            }
+        ]);
 
         $limit = isset($filters['per_page']) ? (int)$filters['per_page'] : 200;
 
@@ -41,6 +58,10 @@ class TicketService
             if ($sprint) {
                 $query->where('sprint_id', $sprint->id);
             }
+        } elseif (isset($filters['sprint_status'])) {
+            $query->whereHas('sprint', function ($q) use ($filters) {
+                $q->where('status', $filters['sprint_status']);
+            });
         } elseif (isset($filters['backlog']) && $filters['backlog'] === 'true') {
             $query->whereNull('sprint_id');
         }

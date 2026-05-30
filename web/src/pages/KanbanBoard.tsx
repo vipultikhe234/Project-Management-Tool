@@ -181,27 +181,45 @@ export const KanbanBoard: React.FC = () => {
     if (!activeProject) return;
     setTicketsLoading(true);
     try {
-      const boardUuid = activeProject.boards?.[0]?.uuid;
-      
-      const [ticketsRes, sprintsRes] = await Promise.all([
-        api.get('/tickets', {
+      if (activeProject.uuid === 'all') {
+        const ticketsRes = await api.get('/tickets', {
           params: { 
             project_uuid: activeProject.uuid,
             organization_uuid: orgUuid,
+            sprint_status: 'active',
             per_page: 500
           }
-        }),
-        api.get('/sprints', {
+        });
+        setTickets(ticketsRes.data.data);
+        setSprints([]);
+      } else {
+        const boardUuid = activeProject.boards?.[0]?.uuid;
+        const sprintsRes = await api.get('/sprints', {
           params: { 
             board_uuid: boardUuid,
             project_uuid: activeProject.uuid,
             organization_uuid: orgUuid
           }
-        })
-      ]);
+        });
+        
+        const sprintsList = sprintsRes.data.data || [];
+        setSprints(sprintsList);
 
-      setTickets(ticketsRes.data.data);
-      setSprints(sprintsRes.data.data || []);
+        const activeSprint = sprintsList.find((s: any) => s.status === 'active');
+        if (activeSprint) {
+          const ticketsRes = await api.get('/tickets', {
+            params: { 
+              project_uuid: activeProject.uuid,
+              sprint_uuid: activeSprint.uuid,
+              organization_uuid: orgUuid,
+              per_page: 500
+            }
+          });
+          setTickets(ticketsRes.data.data);
+        } else {
+          setTickets([]);
+        }
+      }
     } catch (err) {
       console.error('Failed to load tickets', err);
     } finally {

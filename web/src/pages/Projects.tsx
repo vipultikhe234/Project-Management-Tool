@@ -38,6 +38,7 @@ interface Project {
   status: string;
   boards: ProjectBoard[];
   members: ProjectMember[];
+  organization_uuid?: string;
   created_at: string;
 }
 
@@ -114,12 +115,18 @@ export const Projects: React.FC = () => {
     }
   };
 
-  const fetchUsersAndRoles = async () => {
-    if (usersLoaded || loadingUsers) return;
+  const fetchUsersAndRoles = async (project?: Project) => {
+    if (loadingUsers) return;
     setLoadingUsers(true);
     try {
+      const orgUuid = project?.organization_uuid || localStorage.getItem('selected_org_uuid') || '';
+      const params: any = {};
+      if (orgUuid && orgUuid !== 'all') {
+        params.organization_uuid = orgUuid;
+      }
+
       const [usersResponse, rolesResponse] = await Promise.all([
-        api.get('/users'),
+        api.get('/users', { params }),
         api.get('/roles')
       ]);
       setUsers(usersResponse.data.data);
@@ -185,7 +192,7 @@ export const Projects: React.FC = () => {
     setSelectedProject(project);
     setMembersModalOpen(true);
     setAddMemberForm({ user_uuid: '', role_id: '' });
-    fetchUsersAndRoles();
+    fetchUsersAndRoles(project);
   };
 
   const handleAddMember = async (e: React.FormEvent) => {

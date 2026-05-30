@@ -23,7 +23,7 @@ class ProjectService
         // Super admin can see all projects in the org
         if ($user->role?->slug === 'admin') {
             return Project::where('organization_id', $organization->id)
-                ->with(['boards', 'members.role'])
+                ->with(['boards', 'members.role', 'organization'])
                 ->get();
         }
 
@@ -32,7 +32,7 @@ class ProjectService
             ->whereHas('members', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
             })
-            ->with(['boards', 'members.role'])
+            ->with(['boards', 'members.role', 'organization'])
             ->get();
     }
 

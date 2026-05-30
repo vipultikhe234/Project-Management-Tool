@@ -186,8 +186,20 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ isOpen, onCl
   const [editingWorkLogDesc, setEditingWorkLogDesc] = useState('');
 
   // Organization users for Assignee and Code Reviewer select lists
-  const [orgUsers, setOrgUsers] = useState<Array<{ uuid: string; name: string }>>([]);
+  const [orgUsers, setOrgUsers] = useState<Array<{ 
+    uuid: string; 
+    name: string; 
+    role?: {
+      id: number;
+      name: string;
+      slug: string;
+    } | null;
+  }>>([]);
   const [loadingOrgUsers, setLoadingOrgUsers] = useState(false);
+
+  const [usersLoaded, setUsersLoaded] = useState(false);
+  const [sprintsLoaded, setSprintsLoaded] = useState(false);
+  const [epicsLoaded, setEpicsLoaded] = useState(false);
 
   // Get user from localStorage
   const userString = localStorage.getItem('user');
@@ -195,6 +207,12 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ isOpen, onCl
 
   useEffect(() => {
     if (isOpen && issueUuid) {
+      setUsersLoaded(false);
+      setSprintsLoaded(false);
+      setEpicsLoaded(false);
+      setOrgUsers([]);
+      setSprints([]);
+      setEpics([]);
       fetchIssueDetails();
       // Record recently viewed event
       api.post(`/tickets/${issueUuid}/view`).catch(err => console.error('Failed to record ticket view', err));
@@ -240,50 +258,72 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ isOpen, onCl
   const fetchIssueDetails = async () => {
     setLoading(true);
     try {
-      const [issueRes, commentsRes] = await Promise.all([
-        api.get(`/tickets/${issueUuid}`),
-        api.get(`/tickets/${issueUuid}/comments`)
-      ]);
+      const issueRes = await api.get(`/tickets/${issueUuid}`);
       const data = issueRes.data.data;
       setIssue(data);
       setTempTitle(data.title || '');
       setTempDesc(data.description || '');
-      setComments(commentsRes.data.data);
+      setComments(data.comments || []);
       if (data.start_date) {
         setLogWorkDate(data.start_date.substring(0, 10));
       } else {
         setLogWorkDate(new Date().toISOString().split('T')[0]);
       }
-
-      if (data.project?.uuid) {
-        setLoadingEpics(true);
-        setLoadingSprints(true);
-        
-        const epicsPromise = api.get('/tickets', {
-          params: { project_uuid: data.project.uuid, type: 'Epic' }
-        });
-        
-        const sprintsPromise = api.get(`/projects/${data.project.uuid}`)
-          .then(async (projRes) => {
-            const boardUuid = projRes.data.data.boards?.[0]?.uuid;
-            if (boardUuid) {
-              const sprintsRes = await api.get('/sprints', { params: { board_uuid: boardUuid } });
-              setSprints(sprintsRes.data.data || []);
-            }
-          })
-          .catch(err => console.error('Failed to fetch sprints for issue detail', err));
-
-        await Promise.all([
-          epicsPromise.then(res => setEpics(res.data.data || [])),
-          sprintsPromise
-        ]);
-      }
     } catch (err) {
       console.error('Failed to fetch ticket details', err);
     } finally {
       setLoading(false);
-      setLoadingEpics(false);
+    }
+  };
+
+  const fetchSprintsOnce = async () => {
+    if (sprintsLoaded || loadingSprints || !issue?.project?.uuid) return;
+    setLoadingSprints(true);
+    try {
+      const sprintsRes = await api.get('/sprints', {
+        params: { project_uuid: issue.project.uuid }
+      });
+      setSprints(sprintsRes.data.data || []);
+      setSprintsLoaded(true);
+    } catch (err) {
+      console.error('Failed to fetch sprints for issue detail', err);
+    } finally {
       setLoadingSprints(false);
+    }
+  };
+
+  const fetchEpicsOnce = async () => {
+    if (epicsLoaded || loadingEpics || !issue?.project?.uuid) return;
+    setLoadingEpics(true);
+    try {
+      const res = await api.get('/tickets', {
+        params: { project_uuid: issue.project.uuid, type: 'Epic' }
+      });
+      setEpics(res.data.data || []);
+      setEpicsLoaded(true);
+    } catch (err) {
+      console.error('Failed to fetch epics', err);
+    } finally {
+      setLoadingEpics(false);
+    }
+  };
+
+  const fetchOrgUsers = async () => {
+    if (usersLoaded || loadingOrgUsers || !issue?.project?.organization_uuid) return;
+    setLoadingOrgUsers(true);
+    try {
+      const res = await api.get('/users', {
+        params: {
+          organization_uuid: issue.project.organization_uuid,
+          per_page: 100
+        }
+      });
+      setOrgUsers(res.data.data || []);
+      setUsersLoaded(true);
+    } catch (err) {
+      console.error('Failed to fetch organization users', err);
+    } finally {
+      setLoadingOrgUsers(false);
     }
   };
 
@@ -411,22 +451,7 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ isOpen, onCl
     }
   };
 
-  useEffect(() => {
-    if (isOpen && issue?.project?.organization_uuid) {
-      setLoadingOrgUsers(true);
-      api.get('/users', {
-        params: {
-          organization_uuid: issue.project.organization_uuid,
-          per_page: 100
-        }
-      })
-      .then(res => {
-        setOrgUsers(res.data.data || []);
-      })
-      .catch(err => console.error('Failed to fetch organization users', err))
-      .finally(() => setLoadingOrgUsers(false));
-    }
-  }, [isOpen, issue?.project?.organization_uuid]);
+
 
   const handleAssigneeChange = async (assigneeUuid: string) => {
     if (!issue) return;
@@ -716,9 +741,13 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ isOpen, onCl
                   <select
                     value={issue.epic?.uuid || ''}
                     onChange={(e) => handleEpicChange(e.target.value)}
+                    onFocus={fetchEpicsOnce}
                     className="bg-transparent text-[9px] font-bold text-indigo-600 outline-none cursor-pointer border-none p-0 select-none uppercase tracking-widest"
                   >
                     <option value="">Link epic</option>
+                    {issue.epic && !epics.some(e => e.uuid === issue.epic?.uuid) && (
+                      <option value={issue.epic.uuid}>{issue.epic.title} ({issue.epic.key || ''})</option>
+                    )}
                     {epics.map(epic => (
                       <option key={epic.uuid} value={epic.uuid}>{epic.title} ({epic.key})</option>
                     ))}
@@ -1220,6 +1249,7 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ isOpen, onCl
                         <select
                           value={issue.assignee?.uuid || ''}
                           onChange={(e) => handleAssigneeChange(e.target.value)}
+                          onFocus={fetchOrgUsers}
                           className="bg-white border border-slate-200 text-xs font-semibold px-3 py-1.5 rounded-lg focus:outline-none w-full shadow-sm text-slate-700 cursor-pointer hover:bg-slate-50/50 transition-colors"
                         >
                           <option value="">Unassigned</option>
@@ -1249,6 +1279,7 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ isOpen, onCl
                               <select
                                 value={reviewer?.uuid || ''}
                                 onChange={(e) => handleCodeReviewerChange(e.target.value)}
+                                onFocus={fetchOrgUsers}
                                 className="bg-white border border-slate-200 text-xs font-semibold px-3 py-1.5 rounded-lg focus:outline-none w-full shadow-sm text-slate-700 cursor-pointer hover:bg-slate-50/50 transition-colors"
                               >
                                 <option value="">No reviewer</option>
@@ -1334,9 +1365,13 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ isOpen, onCl
                             <select 
                               value={issue.sprint?.uuid || ''}
                               onChange={(e) => handleSprintChange(e.target.value)}
+                              onFocus={fetchSprintsOnce}
                               className="bg-white border border-slate-200 text-xs font-bold px-3 py-1.5 rounded-lg focus:outline-none w-full shadow-sm animate-in fade-in"
                             >
                               <option value="">None (Backlog)</option>
+                              {issue.sprint && !sprints.some(s => s.uuid === issue.sprint?.uuid) && (
+                                <option value={issue.sprint.uuid}>{issue.sprint.name} ({issue.sprint.status || ''})</option>
+                              )}
                               {sprints.map(s => (
                                 <option key={s.uuid} value={s.uuid}>{s.name} ({s.status})</option>
                               ))}

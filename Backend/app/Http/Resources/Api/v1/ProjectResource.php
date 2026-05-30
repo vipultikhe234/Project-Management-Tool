@@ -17,6 +17,7 @@ class ProjectResource extends JsonResource
             'avatar' => $this->avatar,
             'allowed_types' => $this->allowed_types ?? ['Story', 'Task', 'Bug', 'Epic', 'Subtask', 'Spike'],
             'status' => $this->status,
+            'organization_uuid' => $this->organization?->uuid,
             'boards' => $this->boards->map(function ($board) {
                 return [
                     'uuid' => $board->uuid,

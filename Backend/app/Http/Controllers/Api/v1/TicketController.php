@@ -42,7 +42,7 @@ class TicketController extends Controller
     public function show(string $uuid)
     {
         $ticket = Ticket::where('uuid', $uuid)
-            ->with(['project', 'assignee', 'reporter', 'comments.user', 'attachments.user', 'subtasks', 'workLogs.user'])
+            ->with(['project.organization', 'assignee', 'reporter', 'comments.user', 'attachments.user', 'subtasks', 'workLogs.user'])
             ->firstOrFail();
         return new TicketResource($ticket);
     }
@@ -73,7 +73,23 @@ class TicketController extends Controller
     public function getStarred(Request $request)
     {
         $user = $request->user();
-        $tickets = $user->starredTickets()->with(['project', 'assignee', 'reporter'])->paginate(50);
+        $tickets = $user->starredTickets()
+            ->with([
+                'project.organization',
+                'assignee',
+                'reporter',
+                'comments',
+                'attachments',
+                'sprint',
+                'parent',
+                'epic',
+                'subtasks',
+                'workLogs.user',
+                'starredByUsers' => function ($q) use ($user) {
+                    $q->where('users.id', $user->id);
+                }
+            ])
+            ->paginate(50);
         return TicketResource::collection($tickets);
     }
 
@@ -84,7 +100,21 @@ class TicketController extends Controller
     {
         $user = $request->user();
         $tickets = $user->recentlyViewedTickets()
-            ->with(['project', 'assignee', 'reporter'])
+            ->with([
+                'project.organization',
+                'assignee',
+                'reporter',
+                'comments',
+                'attachments',
+                'sprint',
+                'parent',
+                'epic',
+                'subtasks',
+                'workLogs.user',
+                'starredByUsers' => function ($q) use ($user) {
+                    $q->where('users.id', $user->id);
+                }
+            ])
             ->take(10)
             ->get();
         return TicketResource::collection($tickets);
