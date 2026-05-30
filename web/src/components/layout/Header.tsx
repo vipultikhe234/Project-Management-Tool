@@ -1,13 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Bell, Settings, HelpCircle, ChevronDown, LogOut, User as UserIcon, Building2, Plus } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../../lib/api';
 import { GlobalCreateTicketModal } from './GlobalCreateTicketModal';
 
 export const Header: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [organizations, setOrganizations] = useState<any[]>([]);
+
+  // Resolve active module/page name for central header tracking
+  const getModuleName = () => {
+    const path = location.pathname;
+    if (path.includes('/reports')) return 'Reports';
+    if (path.includes('/board')) return 'Active Board';
+    if (path.includes('/backlog')) return 'Backlog';
+    if (path.includes('/your-work') || path === '/') return 'Your Work';
+    if (path.includes('/profile')) return 'Profile';
+    if (path.includes('/projects')) return 'Projects';
+    if (path.includes('/users')) return 'User Management';
+    if (path.includes('/access-control')) return 'Access Control';
+    if (path.includes('/modules')) return 'Module Management';
+    if (path.includes('/organizations')) return 'Organizations';
+    if (path.includes('/project-settings')) return 'Project Settings';
+    return '';
+  };
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   
   // Get user from localStorage
@@ -105,6 +123,13 @@ export const Header: React.FC = () => {
         >
           <Plus className="w-4 h-4" /> Create
         </button>
+
+        {/* Dynamic active page heading next to search box */}
+        {getModuleName() && (
+          <span className="hidden lg:inline-flex text-[10px] font-black text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-1 uppercase tracking-widest shrink-0 shadow-sm animate-in fade-in zoom-in-95 duration-300 select-none">
+            {getModuleName()}
+          </span>
+        )}
 
         <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />

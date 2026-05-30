@@ -61,6 +61,7 @@ export const UserManagement: React.FC = () => {
   const [loadingStaticData, setLoadingStaticData] = useState(false);
   
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   
   const [formData, setFormData] = useState({
     name: '',
@@ -185,36 +186,31 @@ export const UserManagement: React.FC = () => {
     setIsDetailModalOpen(true);
   };
 
-  return (
-    <div className="w-full space-y-8 animate-in fade-in duration-500">
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">User Management</h1>
-          <p className="text-slate-500 text-sm mt-1 font-medium">Manage team members, roles and permissions for SprintNIX.</p>
-        </div>
-        <button 
-          onClick={openCreateModal}
-          className="px-4 py-2 bg-indigo-600 text-white font-semibold text-sm rounded-lg hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-indigo-600/20"
-        >
-          <UserPlus className="w-4 h-4" />
-          Create New User
-        </button>
-      </header>
+  const filteredUsers = users.filter(user => 
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.role.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/10">
-          <div className="relative w-full md:w-80">
+  return (
+    <div className="w-full space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <input 
               type="text" 
               placeholder="Filter users..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm text-slate-700 placeholder-slate-400"
             />
           </div>
-          <div className="flex gap-2 w-full md:w-auto">
+          <div className="relative w-full sm:w-auto shrink-0">
             <select 
               value={selectedRoleFilter}
               onChange={(e) => setSelectedRoleFilter(e.target.value)}
-              className="bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500/20"
+              className="w-full sm:w-48 bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm cursor-pointer"
             >
               <option value="all">All Roles</option>
               <option value="admin">Admin</option>
@@ -223,6 +219,16 @@ export const UserManagement: React.FC = () => {
             </select>
           </div>
         </div>
+        <button 
+          onClick={openCreateModal}
+          className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow cursor-pointer shrink-0"
+        >
+          <UserPlus className="w-4 h-4" />
+          Create New User
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
 
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-4">
@@ -242,7 +248,7 @@ export const UserManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                   <tr key={user.uuid} className="hover:bg-slate-50 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">

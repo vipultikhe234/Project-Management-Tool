@@ -161,7 +161,7 @@ export const Reports: React.FC = () => {
   // Reactive effect to fetch filtered report data automatically when any filter changes
   useEffect(() => {
     if (initialLoaded) {
-      fetchReportData(false);
+      fetchReportData(true);
     }
   }, [selectedProject, selectedSprint, selectedEpic, selectedUser, startDate, endDate, initialLoaded]);
 
@@ -200,13 +200,15 @@ export const Reports: React.FC = () => {
       setTickets(fetchedTickets || []);
       setSummary(fetchedSummary || null);
 
-      if (loadMetadata && metadata) {
+      if (metadata) {
         setProjects(metadata.projects || []);
         setSprints(metadata.sprints || []);
         setEpicList(metadata.epics || []);
         setUsers(metadata.users || []);
-        setFilteredSprints(metadata.sprints || []);
-        setFilteredEpics(metadata.epics || []);
+        if (loadMetadata) {
+          setFilteredSprints(metadata.sprints || []);
+          setFilteredEpics(metadata.epics || []);
+        }
       }
     } catch (err) {
       console.error('Failed to load reports data:', err);
@@ -278,25 +280,13 @@ export const Reports: React.FC = () => {
   );
 
   return (
-    <div className="w-full space-y-8 text-slate-800 animate-in fade-in duration-300 pb-20">
+    <div className="w-full space-y-6 text-slate-800 animate-in fade-in duration-300 pb-20">
       
-      {/* Welcome Banner */}
-      <div className="border-b border-slate-200 pb-6">
-        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
-          <BarChart3 className="w-8 h-8 text-indigo-600" /> Workspace Analytics & Reports
-        </h1>
-        <p className="text-slate-500 text-sm mt-1 font-medium">
-          Analyze project progress, sprint stats, team workloads, and issue completion distributions.
-        </p>
-      </div>
+
 
       {/* Advanced Filters Panel */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-        <div className="flex items-center gap-2 text-slate-700 font-bold text-sm border-b border-slate-100 pb-3">
-          <Filter className="w-4 h-4 text-indigo-600" /> Filters
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
           
           {/* Project Filter */}
           <div className="space-y-1.5">

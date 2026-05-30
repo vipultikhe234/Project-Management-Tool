@@ -185,17 +185,7 @@ export const ModuleManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-6">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-            Modules Manager
-          </h1>
-          <p className="text-slate-500 text-sm mt-1 font-medium">
-            Build and manage system navigation modules, routes, and layout structures dynamically.
-          </p>
-        </div>
-      </div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         

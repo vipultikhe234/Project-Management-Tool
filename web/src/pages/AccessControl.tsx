@@ -168,17 +168,7 @@ export const AccessControl: React.FC = () => {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-6">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-            Access Control Center
-          </h1>
-          <p className="text-slate-500 text-sm mt-1 font-medium">
-            Assign, toggle, and revoke navigation and module access permissions dynamically for active user roles.
-          </p>
-        </div>
-      </div>
+
 
       {/* Roles Grid */}
       {loadingRoles ? (

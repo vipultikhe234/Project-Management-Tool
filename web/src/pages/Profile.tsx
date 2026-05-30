@@ -33,10 +33,7 @@ export const Profile: React.FC = () => {
 
   return (
     <div className="w-full space-y-8 animate-in fade-in duration-500">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-800">Account Settings</h1>
-        <p className="text-slate-500 text-sm mt-1 font-medium">Manage your personal information and security preferences.</p>
-      </header>
+
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Profile Card */}

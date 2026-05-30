@@ -14,7 +14,8 @@ import {
   X, 
   ArrowRight,
   Shield,
-  Briefcase
+  Briefcase,
+  Search
 } from 'lucide-react';
 
 interface ProjectMember {
@@ -81,6 +82,7 @@ export const Projects: React.FC = () => {
 
   const [error, setError] = useState('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
 
   // Auth context checks
@@ -195,6 +197,11 @@ export const Projects: React.FC = () => {
     fetchUsersAndRoles(project);
   };
 
+  const filteredProjects = projects.filter(p => 
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    p.key.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProject) return;
@@ -223,7 +230,7 @@ export const Projects: React.FC = () => {
   };
 
   return (
-    <div className="w-full space-y-8 text-slate-800">
+    <div className="w-full space-y-6 text-slate-800">
       {/* Toast Notification */}
       {toast && (
         <div className={`fixed top-20 right-6 z-50 px-4 py-3 rounded-lg shadow-xl border backdrop-blur-md transition-all duration-300 transform translate-y-0 ${
@@ -238,21 +245,21 @@ export const Projects: React.FC = () => {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-6">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-            Project Dashboard
-          </h1>
-          <p className="text-slate-500 text-sm mt-1 font-medium">
-            Manage your organization's projects, boards, and team members dynamically.
-          </p>
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <input 
+            type="text" 
+            placeholder="Search projects..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm text-slate-700 placeholder-slate-400"
+          />
         </div>
-
         {canManageProjects && (
           <button
             onClick={() => setCreateModalOpen(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-5 py-3 rounded-xl shadow hover:scale-[1.01] active:scale-[0.99] transition-all"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow active:scale-95 transition-all cursor-pointer shrink-0"
           >
             <FolderPlus className="w-4 h-4" /> Create Project
           </button>
@@ -287,7 +294,7 @@ export const Projects: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project) => (
+          {filteredProjects.map((project) => (
             <div 
               key={project.uuid}
               className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col justify-between hover:border-slate-300 transition-all duration-300 relative overflow-hidden group shadow-sm"

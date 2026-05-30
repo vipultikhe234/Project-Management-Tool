@@ -136,28 +136,7 @@ export const Dashboard: React.FC = () => {
   const activities = analytics?.recent_activities || [];
 
   return (
-    <div className="w-full space-y-8 text-slate-800">
-      {/* Welcome Banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 pb-6">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-            Your Work
-          </h1>
-          <p className="text-slate-500 text-sm mt-1 font-medium">
-            Personalized workspace home summarizing your active sprints, tickets, and recently visited projects.
-          </p>
-        </div>
-
-        <div className="flex gap-3">
-          <Link
-            to="/projects"
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow active:scale-95 transition-all"
-          >
-            <Plus className="w-4 h-4" /> Manage Projects
-          </Link>
-        </div>
-      </div>
-
+    <div className="w-full space-y-6 text-slate-800">
       {/* Bento Grid Analytics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col justify-between shadow-sm relative overflow-hidden group">
@@ -205,9 +184,17 @@ export const Dashboard: React.FC = () => {
           
           {/* Recent Projects Section */}
           <div className="space-y-4">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-              <FolderKanban className="w-4 h-4 text-indigo-500" /> Recent Projects
-            </h3>
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                <FolderKanban className="w-4 h-4 text-indigo-500" /> Recent Projects
+              </h3>
+              <Link
+                to="/projects"
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1.5 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" /> Manage Projects
+              </Link>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {projects.slice(0, 4).map((project) => (
                 <div 

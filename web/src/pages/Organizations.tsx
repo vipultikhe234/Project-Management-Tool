@@ -41,6 +41,8 @@ export const Organizations: React.FC = () => {
   });
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [planFilter, setPlanFilter] = useState<string>('all');
 
   useEffect(() => {
     fetchOrganizations();
@@ -100,54 +102,66 @@ export const Organizations: React.FC = () => {
     });
   };
 
+  const filteredOrganizations = organizations.filter(org => {
+    const matchesSearch = 
+      org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      org.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (org.primary_domain && org.primary_domain.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+    const matchesPlan = planFilter === 'all' || org.subscription_plan === planFilter;
+    
+    return matchesSearch && matchesPlan;
+  });
+
   return (
-    <div className="w-full space-y-8 animate-in fade-in duration-500">
-      {/* Header */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Organizations</h1>
-          <p className="text-slate-500 text-sm mt-1 font-medium">Manage your workspace environments and subscriptions.</p>
+    <div className="w-full space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+            <input 
+              type="text" 
+              placeholder="Search by name, slug or domain..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm text-slate-700 placeholder-slate-400"
+            />
+          </div>
+          <div className="relative w-full sm:w-auto shrink-0">
+            <select 
+              value={planFilter}
+              onChange={(e) => setPlanFilter(e.target.value)}
+              className="w-full sm:w-48 bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm cursor-pointer"
+            >
+              <option value="all">All Plans</option>
+              <option value="FREE">FREE</option>
+              <option value="PRO">PRO</option>
+              <option value="ENTERPRISE">ENTERPRISE</option>
+            </select>
+          </div>
         </div>
         <button 
           onClick={openCreateModal}
-          className="px-4 py-2 bg-indigo-600 text-white font-semibold text-sm rounded-lg hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-indigo-600/20"
+          className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4" /> Create Organization
         </button>
-      </header>
-
-      {/* Stats Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Orgs</p>
-          <p className="text-2xl font-bold text-slate-900">{organizations.length}</p>
-        </div>
-        <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Active Subscriptions</p>
-          <p className="text-2xl font-bold text-emerald-600">{organizations.filter(o => o.subscription_plan !== 'FREE').length}</p>
-        </div>
-        <div className="bg-white border border-slate-200 p-6 rounded-xl shadow-sm">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Growth</p>
-          <p className="text-2xl font-bold text-indigo-600">+12%</p>
-        </div>
       </div>
 
-      {/* Search & Filter */}
-      <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-          <input 
-            type="text" 
-            placeholder="Search by name, slug or domain..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-          />
+      {/* Stats Bar */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Total Orgs</p>
+          <p className="text-xl font-bold text-slate-900">{organizations.length}</p>
         </div>
-        <select className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-600 outline-none w-full md:w-48">
-          <option>All Plans</option>
-          <option>FREE</option>
-          <option>PRO</option>
-          <option>ENTERPRISE</option>
-        </select>
+        <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Active Subscriptions</p>
+          <p className="text-xl font-bold text-emerald-600">{organizations.filter(o => o.subscription_plan !== 'FREE').length}</p>
+        </div>
+        <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Growth</p>
+          <p className="text-xl font-bold text-indigo-600">+12%</p>
+        </div>
       </div>
 
       {/* Table */}
@@ -180,7 +194,7 @@ export const Organizations: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {organizations.map((org) => (
+                {filteredOrganizations.map((org) => (
                   <tr key={org.uuid} className="hover:bg-slate-50 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
