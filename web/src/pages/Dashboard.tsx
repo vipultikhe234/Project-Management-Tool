@@ -73,36 +73,19 @@ export const Dashboard: React.FC = () => {
   }, [orgUuid]);
 
   const fetchDashboardData = async () => {
-    console.log('[Dashboard.tsx] fetchDashboardData /projects called with orgUuid:', orgUuid);
+    console.log('[Dashboard.tsx] fetchDashboardData /your-work called with orgUuid:', orgUuid);
     setLoading(true);
     try {
-      // 1. Fetch Projects
-      const projectsResponse = await api.get('/projects', {
+      const response = await api.get('/your-work', {
         params: { organization_uuid: orgUuid }
       });
-      const fetchedProjects = projectsResponse.data.data;
-      setProjects(fetchedProjects);
-
-      // 2. Fetch Tickets Assigned to Me
-      const assignedResponse = await api.get('/tickets', {
-        params: { assignee_uuid: user.uuid }
-      });
-      setAssignedTickets(assignedResponse.data.data);
-
-      // 3. Fetch Starred Tickets
-      const starredResponse = await api.get('/tickets/starred');
-      setStarredTickets(starredResponse.data.data);
-
-      // 4. Fetch Recently Viewed Tickets
-      const recentResponse = await api.get('/tickets/recent');
-      setWorkedOnTickets(recentResponse.data.data);
-
-      // 5. Fetch general workspace analytics & activities
-      const analyticsResponse = await api.get('/dashboard-analytics', {
-        params: orgUuid ? { organization_uuid: orgUuid } : {}
-      });
-      setAnalytics(analyticsResponse.data.data);
-
+      const { projects, assigned_tickets, starred_tickets, recent_tickets, analytics } = response.data.data;
+      
+      setProjects(projects || []);
+      setAssignedTickets(assigned_tickets || []);
+      setStarredTickets(starred_tickets || []);
+      setWorkedOnTickets(recent_tickets || []);
+      setAnalytics(analytics || null);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {

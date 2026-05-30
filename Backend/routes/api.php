@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\v1\NotificationController;
 use App\Http\Controllers\Api\v1\DashboardController;
 use App\Http\Controllers\Api\v1\ModuleController;
 use App\Http\Controllers\Api\v1\PermissionController;
+use App\Http\Controllers\Api\v1\ReportController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -83,7 +84,6 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     Route::delete('/work-logs/{uuid}', [TicketController::class, 'destroyWorkLog']);
 
     // Ticket Comments
-    Route::get('/tickets/{ticketUuid}/comments', [CommentController::class, 'index']);
     Route::post('/tickets/{ticketUuid}/comments', [CommentController::class, 'store']);
 
     // Notifications
@@ -92,6 +92,9 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
 
     // Dashboard Analytics
     Route::get('/dashboard-analytics', [DashboardController::class, 'index']);
+    Route::get('/workspace/bootstrap', [DashboardController::class, 'bootstrap']);
+    Route::get('/your-work', [DashboardController::class, 'yourWork']);
+    Route::get('/reports', [ReportController::class, 'index']);
 
     // Access Management
     Route::get('/modules', [ModuleController::class, 'index']);

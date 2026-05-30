@@ -25,6 +25,7 @@ import { cn } from '../lib/utils';
 import { Status, Priority } from '../types';
 import { GlobalCreateTicketModal } from '../components/layout/GlobalCreateTicketModal';
 import { IssueDetailModal } from '../components/layout/IssueDetailModal';
+import { useWorkspace } from '../context/WorkspaceContext';
 
 const COLUMNS: string[] = ['To Do', 'Ready Reopen', 'In Progress', 'In Review ( CR )', 'Ready for QA', 'QA', 'Done'];
 
@@ -71,6 +72,11 @@ interface TicketType {
     name: string;
     avatar: string;
   } | null;
+  project?: {
+    uuid: string;
+    key: string;
+    name: string;
+  } | null;
 }
 
 interface ProjectType {
@@ -82,12 +88,17 @@ interface ProjectType {
 }
 
 export const KanbanBoard: React.FC = () => {
-  const [projects, setProjects] = useState<ProjectType[]>([]);
-  const [activeProject, setActiveProject] = useState<ProjectType | null>(null);
-  const [tickets, setTickets] = useState<TicketType[]>([]);
-  
-  const [loading, setLoading] = useState(true);
-  const [ticketsLoading, setTicketsLoading] = useState(false);
+  const {
+    projects,
+    activeProject,
+    setActiveProject,
+    sprints,
+    tickets,
+    loading,
+    refreshWorkspaceData
+  } = useWorkspace();
+
+  const [localTickets, setLocalTickets] = useState<TicketType[]>([]);
   const [draggedTicketUuid, setDraggedTicketUuid] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createModalStatus, setCreateModalStatus] = useState<string>('To Do');
@@ -95,12 +106,28 @@ export const KanbanBoard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showMoreUsersDropdown, setShowMoreUsersDropdown] = useState(false);
   const [selectedIssueUuid, setSelectedIssueUuid] = useState<string | null>(null);
-  const [sprints, setSprints] = useState<any[]>([]);
 
-  const activeSprint = sprints.find(s => s.status === 'active');
+  // Sync local tickets state when workspace tickets change
+  useEffect(() => {
+    setLocalTickets(tickets);
+  }, [tickets]);
+
+  // Filter sprints for the active project
+  const projectSprints = sprints.filter(s => 
+    activeProject?.uuid === 'all' || 
+    s.project_uuid === activeProject?.uuid || 
+    activeProject?.boards?.some((b: any) => b.uuid === s.board_uuid)
+  );
+
+  const activeSprint = projectSprints.find(s => s.status === 'active');
   const hasActiveSprint = activeProject?.uuid === 'all' || !!activeSprint;
 
-  const filteredTickets = tickets.filter(t => {
+  const filteredTickets = localTickets.filter(t => {
+    // Filter by project if not 'all'
+    if (activeProject?.uuid !== 'all' && t.project?.uuid !== activeProject?.uuid) {
+      return false;
+    }
+
     // 1. Filter by Active Sprint
     if (activeProject?.uuid !== 'all') {
       if (!activeSprint || !t.sprint || t.sprint.uuid !== activeSprint.uuid) {
@@ -128,106 +155,6 @@ export const KanbanBoard: React.FC = () => {
     return true;
   });
 
-  // Get user from localStorage
-  const userString = localStorage.getItem('user');
-  const user = userString ? JSON.parse(userString) : { name: 'Guest' };
-  const orgUuid = localStorage.getItem('selected_org_uuid') || user.organizations?.[0]?.uuid;
-
-  useEffect(() => {
-    if (orgUuid) {
-      fetchProjects();
-    }
-  }, [orgUuid]);
-
-  const fetchProjects = async () => {
-    console.log('[KanbanBoard.tsx] fetchProjects called with orgUuid:', orgUuid);
-    try {
-      const response = await api.get('/projects', {
-        params: { organization_uuid: orgUuid }
-      });
-      const fetchedProjects = response.data.data;
-      setProjects(fetchedProjects);
-      if (fetchedProjects.length > 0) {
-        if (fetchedProjects.length > 1) {
-          const allMembers = Array.from(
-            new Map(fetchedProjects.flatMap((p: any) => p.members || []).map((m: any) => [m.uuid, m])).values()
-          );
-          setActiveProject({
-            uuid: 'all',
-            key: 'ALL',
-            name: 'All Projects',
-            boards: [],
-            members: allMembers
-          } as any);
-        } else {
-          setActiveProject(fetchedProjects[0]);
-        }
-      } else {
-        setLoading(false);
-      }
-    } catch (err) {
-      console.error('Failed to load projects', err);
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeProject) {
-      fetchTickets();
-    }
-  }, [activeProject]);
-
-  const fetchTickets = async () => {
-    if (!activeProject) return;
-    setTicketsLoading(true);
-    try {
-      if (activeProject.uuid === 'all') {
-        const ticketsRes = await api.get('/tickets', {
-          params: { 
-            project_uuid: activeProject.uuid,
-            organization_uuid: orgUuid,
-            sprint_status: 'active',
-            per_page: 500
-          }
-        });
-        setTickets(ticketsRes.data.data);
-        setSprints([]);
-      } else {
-        const boardUuid = activeProject.boards?.[0]?.uuid;
-        const sprintsRes = await api.get('/sprints', {
-          params: { 
-            board_uuid: boardUuid,
-            project_uuid: activeProject.uuid,
-            organization_uuid: orgUuid
-          }
-        });
-        
-        const sprintsList = sprintsRes.data.data || [];
-        setSprints(sprintsList);
-
-        const activeSprint = sprintsList.find((s: any) => s.status === 'active');
-        if (activeSprint) {
-          const ticketsRes = await api.get('/tickets', {
-            params: { 
-              project_uuid: activeProject.uuid,
-              sprint_uuid: activeSprint.uuid,
-              organization_uuid: orgUuid,
-              per_page: 500
-            }
-          });
-          setTickets(ticketsRes.data.data);
-        } else {
-          setTickets([]);
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load tickets', err);
-    } finally {
-      setTicketsLoading(false);
-      setLoading(false);
-    }
-  };
-
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
       case 'Critical': return <ChevronsUp className="w-4 h-4 text-rose-600 animate-pulse" />;
@@ -253,17 +180,19 @@ export const KanbanBoard: React.FC = () => {
     if (!ticketUuid) return;
 
     // Optimistically update status in UI first
-    setTickets(prev => prev.map(t => t.uuid === ticketUuid ? { ...t, status: targetStatus } : t));
+    setLocalTickets(prev => prev.map(t => t.uuid === ticketUuid ? { ...t, status: targetStatus } : t));
 
     try {
       await api.put(`/tickets/${ticketUuid}`, {
         status: targetStatus,
         project_uuid: activeProject?.uuid
       });
+      // Refresh in background
+      refreshWorkspaceData();
     } catch (err) {
       console.error('Failed to update status on drop', err);
-      // Revert if API fail
-      fetchTickets();
+      // Revert if API fail by resetting from context
+      setLocalTickets(tickets);
     } finally {
       setDraggedTicketUuid(null);
     }
@@ -457,12 +386,7 @@ export const KanbanBoard: React.FC = () => {
       </div>
 
       {/* Kanban Grid */}
-      {ticketsLoading ? (
-        <div className="py-20 flex flex-col items-center justify-center gap-4">
-          <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-          <p className="text-slate-500 font-medium">Fetching board tickets...</p>
-        </div>
-      ) : !hasActiveSprint ? (
+      {!hasActiveSprint ? (
         <div className="py-20 flex flex-col items-center justify-center gap-4 bg-white border border-slate-200 rounded-2xl max-w-2xl mx-auto shadow-sm animate-in fade-in">
           <div className="w-16 h-16 bg-slate-50 border border-slate-100 rounded-full flex items-center justify-center text-indigo-600 shadow-inner">
             <Kanban className="w-8 h-8 animate-pulse" />
@@ -584,7 +508,9 @@ export const KanbanBoard: React.FC = () => {
                             <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[9px] font-bold">{issue.story_points} SP</span>
                           )}
                           {issue.parent && (
-                            <GitBranch className="w-3.5 h-3.5 text-slate-400" title={`Subtask of ${issue.parent.key}`} />
+                            <span title={`Subtask of ${issue.parent.key}`}>
+                              <GitBranch className="w-3.5 h-3.5 text-slate-400" />
+                            </span>
                           )}
                         </div>
                         <div className="flex -space-x-1.5">
@@ -627,7 +553,7 @@ export const KanbanBoard: React.FC = () => {
         isOpen={createModalOpen}
         onClose={() => {
           setCreateModalOpen(false);
-          fetchTickets();
+          refreshWorkspaceData();
         }}
         defaultProjectUuid={activeProject?.uuid}
         defaultStatus={createModalStatus}
@@ -638,7 +564,7 @@ export const KanbanBoard: React.FC = () => {
         isOpen={!!selectedIssueUuid}
         onClose={() => {
           setSelectedIssueUuid(null);
-          fetchTickets();
+          refreshWorkspaceData();
         }}
         issueUuid={selectedIssueUuid || ''}
       />

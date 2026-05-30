@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader2, AlertCircle, Sparkles, FolderKanban, Plus } from 'lucide-react';
 import api from '../../lib/api';
+import { useWorkspace } from '../../context/WorkspaceContext';
 
 interface Project {
   uuid: string;
@@ -35,16 +36,14 @@ interface GlobalCreateTicketModalProps {
 }
 
 export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = ({ isOpen, onClose, defaultProjectUuid, defaultStatus, defaultSprintUuid }) => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [loadingProjects, setLoadingProjects] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const { projects, sprints: contextSprints, tickets: contextTickets, refreshWorkspaceData } = useWorkspace();
+  const [selectedProject, setSelectedProject] = useState<any | null>(null);
 
   // Project-specific resources
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [epics, setEpics] = useState<Ticket[]>([]);
   const [parentIssues, setParentIssues] = useState<Ticket[]>([]);
   const [sprints, setSprints] = useState<any[]>([]);
-  const [loadingProjectResources, setLoadingProjectResources] = useState(false);
 
   // Form State
   const [type, setType] = useState('Task');
@@ -78,11 +77,13 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
   const loggedInUser = userString ? JSON.parse(userString) : null;
   const orgUuid = localStorage.getItem('selected_org_uuid') || loggedInUser?.organizations?.[0]?.uuid || '';
 
+  // When projects are loaded, sync selected project if none selected
   useEffect(() => {
-    if (isOpen && orgUuid) {
-      fetchProjects();
+    if (isOpen && projects.length > 0 && !selectedProject) {
+      const match = defaultProjectUuid ? projects.find((p: any) => p.uuid === defaultProjectUuid) : null;
+      setSelectedProject(match || projects[0]);
     }
-  }, [isOpen, orgUuid]);
+  }, [isOpen, projects, defaultProjectUuid, selectedProject]);
 
   // When defaultStatus changes, sync form state
   useEffect(() => {
@@ -92,16 +93,6 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
       setStatus('To Do');
     }
   }, [isOpen, defaultStatus]);
-
-  // When defaultProjectUuid changes or modal opens/closes, sync selected project if projects are already loaded
-  useEffect(() => {
-    if (isOpen && defaultProjectUuid && projects.length > 0) {
-      const match = projects.find((p) => p.uuid === defaultProjectUuid);
-      if (match) {
-        setSelectedProject(match);
-      }
-    }
-  }, [isOpen, defaultProjectUuid, projects]);
 
   useEffect(() => {
     if (selectedProject) {
@@ -117,66 +108,16 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
         setType(allowed[0] || 'Task');
       }
 
-      fetchProjectResources(selectedProject.uuid);
+      // Populate resources from context directly!
+      setMembers(selectedProject.members || []);
+      setEpics(contextTickets.filter((t: any) => t.project?.uuid === selectedProject.uuid && t.type === 'Epic') as any);
+      setParentIssues(contextTickets.filter((t: any) => t.project?.uuid === selectedProject.uuid) as any);
+      setSprints(contextSprints.filter((s: any) => 
+        s.project_uuid === selectedProject.uuid || 
+        selectedProject.boards?.some((b: any) => b.uuid === s.board_uuid)
+      ));
     }
-  }, [selectedProject]);
-
-  const fetchProjects = async () => {
-    console.log('[GlobalCreateTicketModal.tsx] fetchProjects called with orgUuid:', orgUuid, 'isOpen:', isOpen);
-    setLoadingProjects(true);
-    setError('');
-    try {
-      const response = await api.get('/projects', {
-        params: { organization_uuid: orgUuid }
-      });
-      const fetchedProjects = response.data.data;
-      setProjects(fetchedProjects);
-      if (fetchedProjects.length > 0) {
-        const match = defaultProjectUuid ? fetchedProjects.find((p: any) => p.uuid === defaultProjectUuid) : null;
-        setSelectedProject(match || fetchedProjects[0]);
-      }
-    } catch (err: any) {
-      setError('Failed to load projects. Please try again.');
-    } finally {
-      setLoadingProjects(false);
-    }
-  };
-
-  const fetchProjectResources = async (projectUuid: string) => {
-    setLoadingProjectResources(true);
-    try {
-      // 1. Fetch project members (to assign tickets)
-      const projectDetailRes = await api.get(`/projects/${projectUuid}`);
-      setMembers(projectDetailRes.data.data.members || []);
-
-      // 2. Fetch epics in this project
-      const epicsRes = await api.get('/tickets', {
-        params: { project_uuid: projectUuid, type: 'Epic' }
-      });
-      setEpics(epicsRes.data.data || []);
-
-      // 3. Fetch all tickets in this project (as potential parents)
-      const parentIssuesRes = await api.get('/tickets', {
-        params: { project_uuid: projectUuid }
-      });
-      setParentIssues(parentIssuesRes.data.data || []);
-
-      // 4. Fetch sprints for the first board of this project
-      const boardUuid = projectDetailRes.data.data.boards?.[0]?.uuid;
-      if (boardUuid) {
-        const sprintsRes = await api.get('/sprints', {
-          params: { board_uuid: boardUuid }
-        });
-        setSprints(sprintsRes.data.data || []);
-      } else {
-        setSprints([]);
-      }
-    } catch (err) {
-      console.error('Failed to load project resources:', err);
-    } finally {
-      setLoadingProjectResources(false);
-    }
-  };
+  }, [selectedProject, contextTickets, contextSprints]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -223,8 +164,7 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
           window.location.reload(); // Reload current view to show new ticket
         }, 1000);
       } else {
-        // Refresh project resources to update epics/parents list
-        fetchProjectResources(selectedProject.uuid);
+        refreshWorkspaceData();
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create ticket. Please check input parameters.');
@@ -279,12 +219,6 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
           {/* Project Selector */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Project *</label>
-            {loadingProjects ? (
-              <div className="flex items-center gap-2 text-slate-400 text-xs py-2">
-                <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />
-                Loading project listing...
-              </div>
-            ) : (
               <select
                 value={selectedProject?.uuid || ''}
                 onChange={(e) => {
@@ -300,7 +234,6 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
                   </option>
                 ))}
               </select>
-            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -313,7 +246,7 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-medium"
                 required
               >
-                {allowedTypes.map(t => (
+                {allowedTypes.map((t: string) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
               </select>
@@ -423,59 +356,47 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
             {/* Assignee */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Assignee</label>
-              {loadingProjectResources ? (
-                <div className="text-slate-400 text-xs py-2 flex items-center gap-1.5">
-                  <Loader2 className="w-3.5 h-3.5 text-indigo-500 animate-spin" /> Loading members...
-                </div>
-              ) : (
-                <select
-                  value={assigneeUuid}
-                  onChange={(e) => setAssigneeUuid(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-medium"
-                >
-                  <option value="">Unassigned</option>
-                  {(() => {
-                    const filteredMembers = members.filter(m => m.role?.id === 3 || m.role?.slug === 'org_user');
-                    const me = filteredMembers.find(m => m.uuid === loggedInUser?.uuid);
-                    const others = filteredMembers.filter(m => m.uuid !== loggedInUser?.uuid);
-                    return (
-                      <>
-                        {me && (
-                          <option key={me.uuid} value={me.uuid}>
-                            {me.name} (me)
-                          </option>
-                        )}
-                        {others.map(m => (
-                          <option key={m.uuid} value={m.uuid}>
-                            {m.name}
-                          </option>
-                        ))}
-                      </>
-                    );
-                  })()}
-                </select>
-              )}
+              <select
+                value={assigneeUuid}
+                onChange={(e) => setAssigneeUuid(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-medium"
+              >
+                <option value="">Unassigned</option>
+                {(() => {
+                  const filteredMembers = members.filter(m => m.role?.id === 3 || m.role?.slug === 'org_user');
+                  const me = filteredMembers.find(m => m.uuid === loggedInUser?.uuid);
+                  const others = filteredMembers.filter(m => m.uuid !== loggedInUser?.uuid);
+                  return (
+                    <>
+                      {me && (
+                        <option key={me.uuid} value={me.uuid}>
+                          {me.name} (me)
+                        </option>
+                      )}
+                      {others.map(m => (
+                        <option key={m.uuid} value={m.uuid}>
+                          {m.name}
+                        </option>
+                      ))}
+                    </>
+                  );
+                })()}
+              </select>
             </div>
 
             {/* Parent Ticket (for subtasks/links) */}
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Parent Issue</label>
-              {loadingProjectResources ? (
-                <div className="text-slate-400 text-xs py-2 flex items-center gap-1.5">
-                  <Loader2 className="w-3.5 h-3.5 text-indigo-500 animate-spin" /> Loading tickets...
-                </div>
-              ) : (
-                <select
-                  value={parentUuid}
-                  onChange={(e) => setParentUuid(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-medium"
-                >
-                  <option value="">None</option>
-                  {parentIssues.map(p => (
-                    <option key={p.uuid} value={p.uuid}>{p.key} - {p.title}</option>
-                  ))}
-                </select>
-              )}
+              <select
+                value={parentUuid}
+                onChange={(e) => setParentUuid(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-medium"
+              >
+                <option value="">None</option>
+                {parentIssues.map(p => (
+                  <option key={p.uuid} value={p.uuid}>{p.key} - {p.title}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -484,11 +405,6 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Linked Epic</label>
-                {loadingProjectResources ? (
-                  <div className="text-slate-400 text-xs py-2 flex items-center gap-1.5">
-                    <Loader2 className="w-3.5 h-3.5 text-indigo-500 animate-spin" /> Loading Epics...
-                  </div>
-                ) : (
                   <select
                     value={epicUuid}
                     onChange={(e) => setEpicUuid(e.target.value)}
@@ -499,27 +415,20 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
                       <option key={epic.uuid} value={epic.uuid}>{epic.key} - {epic.title}</option>
                     ))}
                   </select>
-                )}
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sprint</label>
-                {loadingProjectResources ? (
-                  <div className="text-slate-400 text-xs py-2 flex items-center gap-1.5">
-                    <Loader2 className="w-3.5 h-3.5 text-indigo-500 animate-spin" /> Loading Sprints...
-                  </div>
-                ) : (
                   <select
                     value={sprintUuid}
                     onChange={(e) => setSprintUuid(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-medium"
                   >
                     <option value="">None (Backlog)</option>
-                    {sprints.map(s => (
-                      <option key={s.uuid} value={s.uuid}>{s.name} ({s.status})</option>
+                    {sprints.map((s: any) => (
+                      <option key={s.uuid} value={s.uuid}>{s.name}</option>
                     ))}
                   </select>
-                )}
               </div>
             </div>
           )}

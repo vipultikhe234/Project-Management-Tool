@@ -26,6 +26,7 @@ import { Priority } from '../types';
 import { GlobalCreateTicketModal } from '../components/layout/GlobalCreateTicketModal';
 import { IssueDetailModal } from '../components/layout/IssueDetailModal';
 import { CreateSprintModal } from '../components/layout/CreateSprintModal';
+import { useWorkspace } from '../context/WorkspaceContext';
 
 interface TicketType {
   uuid: string;
@@ -51,6 +52,11 @@ interface TicketType {
     name: string;
     avatar: string;
   } | null;
+  project?: {
+    uuid: string;
+    key: string;
+    name: string;
+  } | null;
 }
 
 interface SprintType {
@@ -73,14 +79,18 @@ interface ProjectType {
 }
 
 export const Backlog: React.FC = () => {
-  const [projects, setProjects] = useState<ProjectType[]>([]);
-  const [activeProject, setActiveProject] = useState<ProjectType | null>(null);
-  const [sprints, setSprints] = useState<SprintType[]>([]);
-  const [tickets, setTickets] = useState<TicketType[]>([]);
-  const [epics, setEpics] = useState<any[]>([]);
-  
-  const [loading, setLoading] = useState(true);
-  const [ticketsLoading, setTicketsLoading] = useState(false);
+  const {
+    projects,
+    activeProject,
+    setActiveProject,
+    sprints,
+    tickets,
+    epics,
+    loading,
+    refreshWorkspaceData
+  } = useWorkspace();
+
+  const [localTickets, setLocalTickets] = useState<TicketType[]>([]);
   const [selectedIssues, setSelectedIssues] = useState<string[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedSprintUuid, setSelectedSprintUuid] = useState<string | undefined>(undefined);
@@ -91,85 +101,20 @@ export const Backlog: React.FC = () => {
   const [showCreateSprintModal, setShowCreateSprintModal] = useState(false);
   const [draggedTicketUuid, setDraggedTicketUuid] = useState<string | null>(null);
 
-  // Get user from localStorage
-  const userString = localStorage.getItem('user');
-  const user = userString ? JSON.parse(userString) : { name: 'Guest' };
-  const orgUuid = localStorage.getItem('selected_org_uuid') || user.organizations?.[0]?.uuid;
-
   useEffect(() => {
-    if (orgUuid) {
-      fetchProjects();
+    setLocalTickets(tickets);
+  }, [tickets]);
+
+  const projectSprints = sprints.filter(s => 
+    activeProject?.uuid === 'all' || 
+    s.project_uuid === activeProject?.uuid || 
+    activeProject?.boards?.some((b: any) => b.uuid === s.board_uuid)
+  );
+
+  const filteredTickets = localTickets.filter(t => {
+    if (activeProject?.uuid !== 'all' && t.project?.uuid !== activeProject?.uuid) {
+      return false;
     }
-  }, [orgUuid]);
-
-  const fetchProjects = async () => {
-    console.log('[Backlog.tsx] fetchProjects called with orgUuid:', orgUuid);
-    try {
-      const response = await api.get('/projects', {
-        params: { organization_uuid: orgUuid }
-      });
-      const fetchedProjects = response.data.data;
-      setProjects(fetchedProjects);
-      if (fetchedProjects.length > 0) {
-        if (fetchedProjects.length > 1) {
-          const allMembers = Array.from(
-            new Map(fetchedProjects.flatMap((p: any) => p.members || []).map((m: any) => [m.uuid, m])).values()
-          );
-          setActiveProject({
-            uuid: 'all',
-            key: 'ALL',
-            name: 'All Projects',
-            boards: [],
-            members: allMembers
-          } as any);
-        } else {
-          setActiveProject(fetchedProjects[0]);
-        }
-      } else {
-        setLoading(false);
-      }
-    } catch (err) {
-      console.error('Failed to load projects', err);
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeProject) {
-      fetchProjectData();
-    }
-  }, [activeProject]);
-
-  const fetchProjectData = async () => {
-    if (!activeProject) return;
-    setTicketsLoading(true);
-    try {
-      const boardUuid = activeProject.boards?.[0]?.uuid;
-      
-      const [ticketsRes, sprintsRes] = await Promise.all([
-        api.get('/tickets', { params: { project_uuid: activeProject.uuid, organization_uuid: orgUuid, per_page: 500 } }),
-        api.get('/sprints', { 
-          params: { 
-            board_uuid: boardUuid, 
-            project_uuid: activeProject.uuid, 
-            organization_uuid: orgUuid 
-          } 
-        })
-      ]);
-
-      const allTickets = ticketsRes.data.data || [];
-      setTickets(allTickets);
-      setSprints(sprintsRes.data.data || []);
-      setEpics(allTickets.filter((t: any) => t.type === 'Epic'));
-    } catch (err) {
-      console.error('Failed to load project details', err);
-    } finally {
-      setTicketsLoading(false);
-      setLoading(false);
-    }
-  };
-
-  const filteredTickets = tickets.filter(t => {
     if (t.type === 'Epic') return false;
     if (selectedAssigneeUuids.length > 0 && (!t.assignee || !selectedAssigneeUuids.includes(t.assignee.uuid))) {
       return false;
@@ -191,7 +136,7 @@ export const Backlog: React.FC = () => {
   const handleStartSprint = async (sprintUuid: string) => {
     try {
       await api.put(`/sprints/${sprintUuid}/start`);
-      fetchProjectData();
+      refreshWorkspaceData();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to start sprint');
     }
@@ -200,7 +145,7 @@ export const Backlog: React.FC = () => {
   const handleCompleteSprint = async (sprintUuid: string) => {
     try {
       await api.put(`/sprints/${sprintUuid}/complete`);
-      fetchProjectData();
+      refreshWorkspaceData();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to complete sprint');
     }
@@ -217,7 +162,7 @@ export const Backlog: React.FC = () => {
         board_uuid: boardUuid,
         name
       });
-      fetchProjectData();
+      refreshWorkspaceData();
     } catch (err) {
       alert('Failed to create sprint');
     }
@@ -237,11 +182,11 @@ export const Backlog: React.FC = () => {
     const ticketUuid = e.dataTransfer.getData('text/plain') || draggedTicketUuid;
     if (!ticketUuid) return;
 
-    const ticket = tickets.find(t => t.uuid === ticketUuid);
+    const ticket = localTickets.find(t => t.uuid === ticketUuid);
     if (!ticket) return;
 
     // Optimistically update sprint in UI
-    setTickets(prev => 
+    setLocalTickets(prev => 
       prev.map(t => 
         t.uuid === ticketUuid 
           ? { 
@@ -259,11 +204,11 @@ export const Backlog: React.FC = () => {
         sprint_uuid: targetSprintUuid,
         project_uuid: activeProject?.uuid
       });
-      fetchProjectData();
+      refreshWorkspaceData();
     } catch (err) {
       console.error('Failed to update sprint on drop', err);
       alert('Failed to move ticket to sprint');
-      fetchProjectData();
+      setLocalTickets(tickets);
     } finally {
       setDraggedTicketUuid(null);
     }
@@ -314,10 +259,7 @@ export const Backlog: React.FC = () => {
     );
   }
 
-  const activeSprint = sprints.find(s => s.status === 'active');
-  const futureSprints = sprints.filter(s => s.status === 'future');
 
-  const activeSprintTickets = tickets.filter(t => t.status !== 'Done' && activeSprint && tickets.some(item => item.uuid === t.uuid)); // For simplicity, list active tickets or group by sprint inside render.
   
   return (
     <div className="w-full space-y-8 animate-in fade-in duration-500 pb-20">
@@ -479,14 +421,7 @@ export const Backlog: React.FC = () => {
         )}
       </div>
 
-      {/* Sprints & Active Sprint Sections */}
-      {ticketsLoading ? (
-        <div className="py-20 flex flex-col items-center justify-center gap-4">
-          <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
-          <p className="text-slate-500 font-medium">Fetching board tickets...</p>
-        </div>
-      ) : (
-        <>
+
           {sprints
             .filter(s => s.status !== 'completed')
             .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
@@ -611,7 +546,7 @@ export const Backlog: React.FC = () => {
                                     status: e.target.value,
                                     project_uuid: activeProject?.uuid
                                   });
-                                  fetchProjectData();
+                                  refreshWorkspaceData();
                                 } catch (err) {
                                   alert('Failed to update status');
                                 }
@@ -771,7 +706,7 @@ export const Backlog: React.FC = () => {
                                 status: e.target.value,
                                 project_uuid: activeProject?.uuid
                               });
-                              fetchProjectData();
+                              refreshWorkspaceData();
                             } catch (err) {
                               alert('Failed to update status');
                             }
@@ -836,8 +771,7 @@ export const Backlog: React.FC = () => {
               </button>
             </div>
           </section>
-        </>
-      )}
+
 
       {/* Create Ticket Modal */}
       <GlobalCreateTicketModal
@@ -845,7 +779,7 @@ export const Backlog: React.FC = () => {
         onClose={() => {
           setShowCreateModal(false);
           setSelectedSprintUuid(undefined);
-          fetchProjectData();
+          refreshWorkspaceData();
         }}
         defaultProjectUuid={activeProject?.uuid}
         defaultSprintUuid={selectedSprintUuid}
@@ -856,7 +790,7 @@ export const Backlog: React.FC = () => {
         isOpen={!!selectedIssueUuid}
         onClose={() => {
           setSelectedIssueUuid(null);
-          fetchProjectData();
+          refreshWorkspaceData();
         }}
         issueUuid={selectedIssueUuid || ''}
       />
@@ -865,7 +799,7 @@ export const Backlog: React.FC = () => {
       <CreateSprintModal
         isOpen={showCreateSprintModal}
         onClose={() => setShowCreateSprintModal(false)}
-        onSprintCreated={fetchProjectData}
+        onSprintCreated={refreshWorkspaceData}
         activeProjectUuid={activeProject?.uuid || ''}
         defaultSprintName={`Sprint ${sprints.length + 1}`}
         projects={projects as any}

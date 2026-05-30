@@ -3,6 +3,7 @@ import { Layout } from './components/layout/Layout';
 import { Dashboard } from './pages/Dashboard';
 import { KanbanBoard } from './pages/KanbanBoard';
 import { Backlog } from './pages/Backlog';
+import { Reports } from './pages/Reports';
 
 import { UserManagement } from './pages/UserManagement';
 import { Organizations } from './pages/Organizations';
@@ -16,6 +17,8 @@ import { AccessControl } from './pages/AccessControl';
 import { ModuleManagement } from './pages/ModuleManagement';
 import { ProjectSettings } from './pages/ProjectSettings';
 import { ShieldAlert } from 'lucide-react';
+
+import { WorkspaceProvider } from './context/WorkspaceContext';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -81,7 +84,9 @@ export default function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <Layout />
+              <WorkspaceProvider>
+                <Layout />
+              </WorkspaceProvider>
             </ProtectedRoute>
           }
         >
@@ -89,6 +94,7 @@ export default function App() {
           <Route path="your-work" element={<RouteAccessGuard routePath="/your-work"><Dashboard /></RouteAccessGuard>} />
           <Route path="board" element={<RouteAccessGuard routePath="/board"><KanbanBoard /></RouteAccessGuard>} />
           <Route path="backlog" element={<RouteAccessGuard routePath="/backlog"><Backlog /></RouteAccessGuard>} />
+          <Route path="reports" element={<RouteAccessGuard routePath="/reports"><Reports /></RouteAccessGuard>} />
 
 
           <Route path="users" element={<RouteAccessGuard routePath="/users"><UserManagement /></RouteAccessGuard>} />

@@ -10,33 +10,7 @@ use Illuminate\Support\Str;
 
 class CommentController extends Controller
 {
-    /**
-     * Get comments for a specific ticket.
-     */
-    public function index(string $ticketUuid)
-    {
-        $ticket = Ticket::where('uuid', $ticketUuid)->firstOrFail();
-        
-        $comments = TicketComment::where('ticket_id', $ticket->id)
-            ->with('user')
-            ->orderBy('created_at', 'desc')
-            ->get();
 
-        return response()->json([
-            'data' => $comments->map(function ($comment) {
-                return [
-                    'uuid' => $comment->uuid,
-                    'body' => $comment->body,
-                    'user' => [
-                        'uuid' => $comment->user->uuid,
-                        'name' => $comment->user->name,
-                        'avatar' => $comment->user->avatar ?? 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
-                    ],
-                    'created_at' => $comment->created_at->toDateTimeString(),
-                ];
-            })
-        ]);
-    }
 
     /**
      * Store a comment for a specific ticket.

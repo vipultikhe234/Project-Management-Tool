@@ -1419,6 +1419,7 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ isOpen, onCl
             {/* Modal Body */}
             <div className="space-y-4">
               {(() => {
+                if (!issue) return null;
                 const logs = issue.work_logs || {};
                 const totalLogged = Object.values(logs).reduce((sum: number, val: any) => sum + (Number(val) || 0), 0);
                 const dateRange = getDatesInRange(issue.start_date, issue.due_date);
