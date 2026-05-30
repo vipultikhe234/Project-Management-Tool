@@ -40,12 +40,14 @@ class UserResource extends JsonResource
                     'role' => $roleName,
                 ];
             }),
-            'permissions' => $this->when($request->is('api/*/me') || $request->is('api/*/login') || $request->is('api/*/google-login'), function () {
-                return $this->getPermissionsList();
-            }),
-            'modules' => $this->when($request->is('api/*/me') || $request->is('api/*/login') || $request->is('api/*/google-login'), function () {
-                return $this->getFilteredModules();
-            }),
+            'permissions' => $this->when(
+                $request->is('*login') || $request->is('*register') || $request->is('*me'),
+                fn() => $this->getPermissionsList()
+            ),
+            'modules' => $this->when(
+                $request->is('*login') || $request->is('*register') || $request->is('*me'),
+                fn() => $this->getFilteredModules()
+            ),
             'created_at' => $this->created_at->toDateTimeString(),
             'updated_at' => $this->updated_at->toDateTimeString(),
         ];

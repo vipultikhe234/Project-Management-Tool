@@ -57,6 +57,8 @@ export const UserManagement: React.FC = () => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [staticDataLoaded, setStaticDataLoaded] = useState(false);
+  const [loadingStaticData, setLoadingStaticData] = useState(false);
   
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('all');
   
@@ -69,46 +71,57 @@ export const UserManagement: React.FC = () => {
     status: 'active'
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      const [usersRes, rolesRes, orgsRes] = await Promise.all([
-        api.get('/users'),
-        api.get('/roles'),
-        api.get('/organizations')
-      ]);
-      setUsers(usersRes.data.data);
-      setRoles(rolesRes.data.data);
-      setOrganizations(orgsRes.data.data);
-    } catch (err) {
-      console.error('Failed to fetch data', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Get active organization UUID from localStorage or fallback
   const userString = localStorage.getItem('user');
   const loggedInUser = userString ? JSON.parse(userString) : { name: 'Guest' };
   const selectedOrgUuid = localStorage.getItem('selected_org_uuid') || loggedInUser.organizations?.[0]?.uuid;
 
-  const filteredUsers = users.filter(u => {
-    // 1. Filter by role
-    const matchesRole = selectedRoleFilter === 'all' || u.role.slug === selectedRoleFilter;
-    
-    // 2. Filter by organization
-    let matchesOrg = false;
-    if (!selectedOrgUuid || selectedOrgUuid === 'all' || u.role.slug === 'admin') {
-      matchesOrg = true;
-    } else {
-      matchesOrg = u.organizations?.some((org: any) => org.uuid === selectedOrgUuid) || false;
+  useEffect(() => {
+    fetchUsers();
+  }, [selectedOrgUuid, selectedRoleFilter]);
+
+  const fetchStaticData = async () => {
+    if (staticDataLoaded || loadingStaticData) return;
+    setLoadingStaticData(true);
+    try {
+      const [rolesRes, orgsRes] = await Promise.all([
+        api.get('/roles'),
+        api.get('/organizations')
+      ]);
+      setRoles(rolesRes.data.data);
+      setOrganizations(orgsRes.data.data);
+      setStaticDataLoaded(true);
+    } catch (err) {
+      console.error('Failed to fetch static data', err);
+    } finally {
+      setLoadingStaticData(false);
     }
-    
-    return matchesRole && matchesOrg;
-  });
+  };
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const params: any = {
+        per_page: 500
+      };
+      if (selectedOrgUuid && selectedOrgUuid !== 'all') {
+        params.organization_uuid = selectedOrgUuid;
+      }
+      if (selectedRoleFilter && selectedRoleFilter !== 'all') {
+        params.role_slug = selectedRoleFilter;
+      }
+      const usersRes = await api.get('/users', { params });
+      setUsers(usersRes.data.data);
+    } catch (err) {
+      console.error('Failed to fetch users', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchData = async () => {
+    await fetchUsers();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,6 +152,7 @@ export const UserManagement: React.FC = () => {
   };
 
   const openCreateModal = () => {
+    fetchStaticData();
     setFormData({ 
       name: '', 
       email: '', 
@@ -152,6 +166,7 @@ export const UserManagement: React.FC = () => {
   };
 
   const openEditModal = (user: User) => {
+    fetchStaticData();
     setSelectedUser(user);
     setFormData({
       name: user.name,
@@ -202,9 +217,9 @@ export const UserManagement: React.FC = () => {
               className="bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500/20"
             >
               <option value="all">All Roles</option>
-              {roles.map(role => (
-                <option key={role.id} value={role.slug}>{role.name}</option>
-              ))}
+              <option value="admin">Admin</option>
+              <option value="org_admin">Organization Admin</option>
+              <option value="org_user">Organization User</option>
             </select>
           </div>
         </div>
@@ -227,7 +242,7 @@ export const UserManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-              {filteredUsers.map((user) => (
+              {users.map((user) => (
                   <tr key={user.uuid} className="hover:bg-slate-50 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -340,8 +355,9 @@ export const UserManagement: React.FC = () => {
                     onChange={(e) => setFormData({...formData, role_id: e.target.value})}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                     required
+                    disabled={loadingStaticData}
                   >
-                    <option value="">Select Role...</option>
+                    <option value="">{loadingStaticData ? 'Loading roles...' : 'Select Role...'}</option>
                     {roles.map(role => (
                       <option key={role.id} value={role.id}>{role.name}</option>
                     ))}
@@ -353,8 +369,9 @@ export const UserManagement: React.FC = () => {
                     value={formData.organization_uuid}
                     onChange={(e) => setFormData({...formData, organization_uuid: e.target.value})}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    disabled={loadingStaticData}
                   >
-                    <option value="">Select Organization...</option>
+                    <option value="">{loadingStaticData ? 'Loading organizations...' : 'Select Organization...'}</option>
                     {organizations.map(org => (
                       <option key={org.uuid} value={org.uuid}>{org.name}</option>
                     ))}

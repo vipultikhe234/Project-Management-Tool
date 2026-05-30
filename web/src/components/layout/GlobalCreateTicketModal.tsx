@@ -122,6 +122,7 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
   }, [selectedProject]);
 
   const fetchProjects = async () => {
+    console.log('[GlobalCreateTicketModal.tsx] fetchProjects called with orgUuid:', orgUuid, 'isOpen:', isOpen);
     setLoadingProjects(true);
     setError('');
     try {

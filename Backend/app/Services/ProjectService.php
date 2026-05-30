@@ -22,14 +22,18 @@ class ProjectService
         
         // Super admin can see all projects in the org
         if ($user->role?->slug === 'admin') {
-            return Project::where('organization_id', $organization->id)->get();
+            return Project::where('organization_id', $organization->id)
+                ->with(['boards', 'members.role'])
+                ->get();
         }
 
         // Other roles see projects they are members of
         return Project::where('organization_id', $organization->id)
             ->whereHas('members', function ($query) use ($user) {
                 $query->where('user_id', $user->id);
-            })->get();
+            })
+            ->with(['boards', 'members.role'])
+            ->get();
     }
 
     /**

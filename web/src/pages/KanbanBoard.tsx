@@ -140,6 +140,7 @@ export const KanbanBoard: React.FC = () => {
   }, [orgUuid]);
 
   const fetchProjects = async () => {
+    console.log('[KanbanBoard.tsx] fetchProjects called with orgUuid:', orgUuid);
     try {
       const response = await api.get('/projects', {
         params: { organization_uuid: orgUuid }

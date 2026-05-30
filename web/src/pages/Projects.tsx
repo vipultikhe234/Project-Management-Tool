@@ -58,6 +58,8 @@ export const Projects: React.FC = () => {
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [usersLoaded, setUsersLoaded] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
   
   // Modals state
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -89,7 +91,6 @@ export const Projects: React.FC = () => {
 
   useEffect(() => {
     fetchProjects();
-    fetchUsersAndRoles();
   }, []);
 
   const showToast = (message: string, type: 'success' | 'error') => {
@@ -98,9 +99,10 @@ export const Projects: React.FC = () => {
   };
 
   const fetchProjects = async () => {
+    const orgUuid = localStorage.getItem('selected_org_uuid') || '';
+    console.log('[Projects.tsx] fetchProjects called with orgUuid:', orgUuid);
     setLoadingProjects(true);
     try {
-      const orgUuid = localStorage.getItem('selected_org_uuid') || '';
       const response = await api.get('/projects', {
         params: { organization_uuid: orgUuid }
       });
@@ -113,6 +115,8 @@ export const Projects: React.FC = () => {
   };
 
   const fetchUsersAndRoles = async () => {
+    if (usersLoaded || loadingUsers) return;
+    setLoadingUsers(true);
     try {
       const [usersResponse, rolesResponse] = await Promise.all([
         api.get('/users'),
@@ -120,8 +124,11 @@ export const Projects: React.FC = () => {
       ]);
       setUsers(usersResponse.data.data);
       setRoles(rolesResponse.data.data);
+      setUsersLoaded(true);
     } catch (err) {
       console.error('Failed to load user listing or security roles', err);
+    } finally {
+      setLoadingUsers(false);
     }
   };
 
@@ -131,6 +138,7 @@ export const Projects: React.FC = () => {
     setSubmitting(true);
 
     const orgUuid = localStorage.getItem('selected_org_uuid') || '';
+    let targetOrgUuid = '';
     if (orgUuid === 'all' || !orgUuid) {
       // If super admin has 'all' selected, use their first organization or warn
       const userOrgs = loggedInUser?.organizations || [];
@@ -140,9 +148,9 @@ export const Projects: React.FC = () => {
         return;
       }
       // Use their active organization
-      var targetOrgUuid = userOrgs[0].uuid;
+      targetOrgUuid = userOrgs[0].uuid;
     } else {
-      var targetOrgUuid = orgUuid;
+      targetOrgUuid = orgUuid;
     }
 
     try {
@@ -177,6 +185,7 @@ export const Projects: React.FC = () => {
     setSelectedProject(project);
     setMembersModalOpen(true);
     setAddMemberForm({ user_uuid: '', role_id: '' });
+    fetchUsersAndRoles();
   };
 
   const handleAddMember = async (e: React.FormEvent) => {
@@ -484,8 +493,9 @@ export const Projects: React.FC = () => {
                         onChange={(e) => setAddMemberForm({...addMemberForm, user_uuid: e.target.value})}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 text-xs font-medium"
                         required
+                        disabled={loadingUsers}
                       >
-                        <option value="">-- Choose User --</option>
+                        <option value="">{loadingUsers ? 'Loading Users...' : '-- Choose User --'}</option>
                         {users.map(u => (
                           <option key={u.uuid} value={u.uuid}>{u.name} ({u.email})</option>
                         ))}
@@ -499,8 +509,9 @@ export const Projects: React.FC = () => {
                         onChange={(e) => setAddMemberForm({...addMemberForm, role_id: e.target.value})}
                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 text-xs font-medium"
                         required
+                        disabled={loadingUsers}
                       >
-                        <option value="">-- Choose Role --</option>
+                        <option value="">{loadingUsers ? 'Loading Roles...' : '-- Choose Role --'}</option>
                         {roles.map(r => (
                           <option key={r.id} value={r.id}>{r.name}</option>
                         ))}

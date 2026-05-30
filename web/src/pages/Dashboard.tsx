@@ -73,6 +73,7 @@ export const Dashboard: React.FC = () => {
   }, [orgUuid]);
 
   const fetchDashboardData = async () => {
+    console.log('[Dashboard.tsx] fetchDashboardData /projects called with orgUuid:', orgUuid);
     setLoading(true);
     try {
       // 1. Fetch Projects
