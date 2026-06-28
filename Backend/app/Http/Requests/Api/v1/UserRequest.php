@@ -23,18 +23,43 @@ class UserRequest extends FormRequest
      */
     public function rules(): array
     {
-        $userParam = $this->route('user');
         $userId = null;
 
+        // 1. Check 'user' parameter
+        $userParam = $this->route('user');
         if ($userParam instanceof User) {
             $userId = $userParam->id;
         } elseif (is_string($userParam)) {
             $userId = User::where('uuid', $userParam)->first()?->id;
         }
 
-        // Fallback: segment 4 (e.g., api/v1/users/{uuid})
+        // 2. Check all route parameters
+        if (!$userId && $this->route()) {
+            foreach ($this->route()->parameters() as $param) {
+                if ($param instanceof User) {
+                    $userId = $param->id;
+                    break;
+                } elseif (is_string($param)) {
+                    $found = User::where('uuid', $param)->first();
+                    if ($found) {
+                        $userId = $found->id;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 3. Fallback: segment 4 (e.g., api/v1/users/{uuid})
         if (!$userId) {
             $segment = $this->segment(4);
+            if ($segment && is_string($segment)) {
+                $userId = User::where('uuid', $segment)->first()?->id;
+            }
+        }
+
+        // 4. Fallback: segment 3 (in case URL prefix differs)
+        if (!$userId) {
+            $segment = $this->segment(3);
             if ($segment && is_string($segment)) {
                 $userId = User::where('uuid', $segment)->first()?->id;
             }
