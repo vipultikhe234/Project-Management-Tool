@@ -20,12 +20,8 @@ class UserService
         $query = User::with(['role', 'organizations']);
 
         if (isset($filters['organization_uuid'])) {
-            $query->where(function ($query) use ($filters) {
-                $query->whereHas('organizations', function ($q) use ($filters) {
-                    $q->where('organizations.uuid', $filters['organization_uuid']);
-                })->orWhereHas('role', function ($q) {
-                    $q->where('slug', 'admin');
-                });
+            $query->whereHas('organizations', function ($q) use ($filters) {
+                $q->where('organizations.uuid', $filters['organization_uuid']);
             });
         }
 

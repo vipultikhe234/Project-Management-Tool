@@ -103,6 +103,13 @@ class ProjectService
     {
         $user = User::where('uuid', $userUuid)->firstOrFail();
         
+        // Ensure user belongs to the project's organization
+        if (!$user->organizations()->where('organizations.id', $project->organization_id)->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'user_uuid' => ['The selected user does not belong to this project\'s organization.']
+            ]);
+        }
+        
         if ($project->members()->where('user_id', $user->id)->exists()) {
             return false;
         }
