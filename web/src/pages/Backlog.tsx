@@ -26,6 +26,7 @@ import { Priority } from '../types';
 import { GlobalCreateTicketModal } from '../components/layout/GlobalCreateTicketModal';
 import { IssueDetailModal } from '../components/layout/IssueDetailModal';
 import { CreateSprintModal } from '../components/layout/CreateSprintModal';
+import { EditSprintModal } from '../components/layout/EditSprintModal';
 import { useWorkspace } from '../context/WorkspaceContext';
 
 interface TicketType {
@@ -100,6 +101,8 @@ export const Backlog: React.FC = () => {
   const [selectedIssueUuid, setSelectedIssueUuid] = useState<string | null>(null);
   const [showCreateSprintModal, setShowCreateSprintModal] = useState(false);
   const [draggedTicketUuid, setDraggedTicketUuid] = useState<string | null>(null);
+  const [editingSprint, setEditingSprint] = useState<any | null>(null);
+  const [activeDropdownSprintUuid, setActiveDropdownSprintUuid] = useState<string | null>(null);
 
   useEffect(() => {
     setLocalTickets(tickets);
@@ -286,35 +289,6 @@ export const Backlog: React.FC = () => {
       {/* Combined Header, Switcher, Filters & Action Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-4">
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-          {/* Project Switcher Select */}
-          <div className="relative w-full sm:w-48 shrink-0">
-            <select 
-              value={activeProject?.uuid}
-              onChange={(e) => {
-                if (e.target.value === 'all') {
-                  const allMembers = Array.from(
-                    new Map(projects.flatMap(p => p.members || []).map(m => [m.uuid, m])).values()
-                  );
-                  setActiveProject({
-                    uuid: 'all',
-                    key: 'ALL',
-                    name: 'All Projects',
-                    boards: [],
-                    members: allMembers
-                  } as any);
-                } else {
-                  const found = projects.find(p => p.uuid === e.target.value);
-                  if (found) setActiveProject(found);
-                }
-              }}
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm cursor-pointer"
-            >
-              {projects.length > 1 && <option value="all">All Projects</option>}
-              {projects.map(p => (
-                <option key={p.uuid} value={p.uuid}>{p.name}</option>
-              ))}
-            </select>
-          </div>
 
           {/* Search Input */}
           <div className="relative w-full sm:w-64">
@@ -456,7 +430,7 @@ export const Backlog: React.FC = () => {
                       {sprint.start_date && sprint.end_date ? (
                         `${new Date(sprint.start_date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})} - ${new Date(sprint.end_date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}`
                       ) : (
-                        <span className="text-indigo-600 hover:underline cursor-pointer">Add dates</span>
+                        <span className="text-indigo-600 hover:underline cursor-pointer" onClick={() => setEditingSprint(sprint)}>Add dates</span>
                       )}
                     </span>
                     <span className="text-xs text-slate-400 font-medium">({sprintTickets.length} work items)</span>
@@ -486,9 +460,47 @@ export const Backlog: React.FC = () => {
                       </button>
                     ) : null}
 
-                    <button className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors shrink-0">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
+                    <div className="relative shrink-0">
+                      <button 
+                        onClick={() => setActiveDropdownSprintUuid(activeDropdownSprintUuid === sprint.uuid ? null : sprint.uuid)}
+                        className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors shrink-0 cursor-pointer"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+                      
+                      {activeDropdownSprintUuid === sprint.uuid && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setActiveDropdownSprintUuid(null)}></div>
+                          <div className="absolute right-0 mt-1 w-36 bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1.5 text-xs animate-in fade-in zoom-in-95 duration-100">
+                            <button
+                              onClick={() => {
+                                setEditingSprint(sprint);
+                                setActiveDropdownSprintUuid(null);
+                              }}
+                              className="w-full text-left px-4 py-2 hover:bg-slate-50 font-bold text-slate-700 hover:text-indigo-600 transition-colors cursor-pointer"
+                            >
+                              Edit Sprint
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (window.confirm(`Are you sure you want to delete ${sprint.name}? All tickets will be rolled back to the backlog.`)) {
+                                  try {
+                                    await api.delete(`/sprints/${sprint.uuid}`);
+                                    refreshWorkspaceData();
+                                  } catch (err: any) {
+                                    alert(err.response?.data?.message || 'Failed to delete sprint');
+                                  }
+                                }
+                                setActiveDropdownSprintUuid(null);
+                              }}
+                              className="w-full text-left px-4 py-2 hover:bg-rose-50 font-bold text-rose-600 transition-colors cursor-pointer"
+                            >
+                              Delete Sprint
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -815,6 +827,14 @@ export const Backlog: React.FC = () => {
         activeProjectUuid={activeProject?.uuid || ''}
         defaultSprintName={`Sprint ${sprints.length + 1}`}
         projects={projects as any}
+      />
+
+      {/* Edit Sprint Modal */}
+      <EditSprintModal
+        isOpen={!!editingSprint}
+        onClose={() => setEditingSprint(null)}
+        onSprintUpdated={refreshWorkspaceData}
+        sprint={editingSprint}
       />
     </div>
   );

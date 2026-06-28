@@ -93,28 +93,6 @@ export const Header: React.FC = () => {
       <div className="flex items-center gap-6">
         <span className="text-xl font-bold tracking-tight text-slate-800 font-display">SprintNIX</span>
 
-        {/* Global Organization / Workspace Filter */}
-        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
-          <Building2 className="w-3.5 h-3.5 text-indigo-500" />
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Workspace:</span>
-          {isAdmin ? (
-            <select
-              value={selectedOrgUuid}
-              onChange={handleOrgChange}
-              className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer pr-1"
-            >
-              {organizations.map((org: any) => (
-                <option key={org.uuid} value={org.uuid}>
-                  {org.name}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <span className="text-xs font-semibold text-slate-700">
-              {user.organizations?.[0]?.name || 'No Organization'}
-            </span>
-          )}
-        </div>
 
         {/* Global Create Button */}
         <button

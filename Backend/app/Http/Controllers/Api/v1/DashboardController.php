@@ -9,11 +9,19 @@ use App\Models\Project;
 use App\Models\Ticket;
 use App\Models\ActivityLog;
 use App\Models\Sprint;
+use App\Repositories\Contracts\DashboardRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    protected $dashboardRepo;
+
+    public function __construct(DashboardRepositoryInterface $dashboardRepo)
+    {
+        $this->dashboardRepo = $dashboardRepo;
+    }
+
     /**
      * Get dynamic dashboard metrics based on role and organization.
      */
@@ -21,9 +29,9 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $roleSlug = $user->role?->slug;
-
-        // 1. Super Admin Dashboard View (System-wide if no specific org or 'all' is selected)
         $orgUuid = $request->query('organization_uuid');
+        $projectUuid = $request->query('project_uuid');
+
         if ($roleSlug === 'admin' && (!$orgUuid || $orgUuid === 'all')) {
             $totalOrgs = Organization::count();
             $totalUsers = User::count();
@@ -62,9 +70,8 @@ class DashboardController extends Controller
             ]);
         }
 
-        // 2. Organization Admin / Employee Dashboard View
+        // Resolve organization
         if (!$orgUuid) {
-            // Fallback to first user organization if not provided
             $org = $user->organizations()->first();
             $orgUuid = $org ? $org->uuid : null;
         }
@@ -78,6 +85,9 @@ class DashboardController extends Controller
                         'open_tickets' => 0,
                         'closed_tickets' => 0,
                         'active_sprints' => 0,
+                        'epics_count' => 0,
+                        'epic_stories_count' => 0,
+                        'developer_days' => 0,
                     ],
                     'recent_activities' => [],
                     'critical_issues' => []
@@ -85,27 +95,52 @@ class DashboardController extends Controller
             ]);
         }
 
+        // Try reading cached stats
+        $cached = $this->dashboardRepo->getCachedStats($orgUuid, $roleSlug ?? 'employee');
+        if ($cached) {
+            return response()->json([
+                'data' => [
+                    'role' => $roleSlug === 'org_admin' ? 'ORG_ADMIN' : 'EMPLOYEE',
+                    'stats' => $cached->stats,
+                    'recent_activities' => $cached->recent_activities,
+                    'critical_issues' => $cached->critical_issues,
+                ]
+            ]);
+        }
+
         $organization = Organization::where('uuid', $orgUuid)->firstOrFail();
-        
-        $totalProjects = Project::where('organization_id', $organization->id)->count();
-        
-        $projectIds = Project::where('organization_id', $organization->id)->pluck('id');
+        if ($projectUuid && $projectUuid !== 'all') {
+            $projectIds = Project::where('uuid', $projectUuid)->pluck('id');
+            $totalProjects = 1;
+        } else {
+            $totalProjects = Project::where('organization_id', $organization->id)->count();
+            $projectIds = Project::where('organization_id', $organization->id)->pluck('id');
+        }
         
         $openTickets = Ticket::whereIn('project_id', $projectIds)
+            ->where('type', '!=', 'Epic')
             ->where('status', '!=', 'Done')
             ->count();
             
         $closedTickets = Ticket::whereIn('project_id', $projectIds)
+            ->where('type', '!=', 'Epic')
             ->where('status', 'Done')
             ->count();
 
-        // Get board IDs
         $boardIds = DB::table('boards')->whereIn('project_id', $projectIds)->pluck('id');
         $activeSprints = Sprint::whereIn('board_id', $boardIds)
             ->where('status', 'active')
             ->count();
 
-        // Fetch Recent Activities related to these projects
+        // 1. Epic and worklog statistics for issues.txt requirements
+        $epicsCount = Ticket::whereIn('project_id', $projectIds)->where('type', 'Epic')->count();
+        $epicStoriesCount = Ticket::whereIn('project_id', $projectIds)->where('type', 'Story')->whereNotNull('epic_id')->count();
+        
+        $totalWorkLogHours = DB::table('ticket_work_logs')
+            ->whereIn('ticket_id', Ticket::whereIn('project_id', $projectIds)->where('type', '!=', 'Epic')->pluck('id'))
+            ->sum('hours');
+        $developerDays = round($totalWorkLogHours / 8, 1);
+
         $recentActivities = ActivityLog::with('user')
             ->whereIn('target_type', ['Ticket', 'Project', 'Sprint'])
             ->orderBy('created_at', 'desc')
@@ -123,10 +158,10 @@ class DashboardController extends Controller
                     'time' => $log->created_at->diffForHumans(),
                     'type' => 'edit',
                 ];
-            });
+            })->toArray();
 
-        // Fetch Critical/High Priority tickets in these projects
         $criticalIssues = Ticket::whereIn('project_id', $projectIds)
+            ->where('type', '!=', 'Epic')
             ->whereIn('priority', ['High', 'Critical'])
             ->where('status', '!=', 'Done')
             ->with('assignee')
@@ -146,17 +181,25 @@ class DashboardController extends Controller
                         'avatar' => $ticket->assignee->avatar ?? 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
                     ]] : [],
                 ];
-            });
+            })->toArray();
+
+        $stats = [
+            'total_projects' => $totalProjects,
+            'open_tickets' => $openTickets,
+            'closed_tickets' => $closedTickets,
+            'active_sprints' => $activeSprints,
+            'epics_count' => $epicsCount,
+            'epic_stories_count' => $epicStoriesCount,
+            'developer_days' => $developerDays,
+        ];
+
+        // Save cache
+        $this->dashboardRepo->updateCachedStats($orgUuid, $roleSlug ?? 'employee', $stats, $recentActivities, $criticalIssues);
 
         return response()->json([
             'data' => [
                 'role' => $roleSlug === 'org_admin' ? 'ORG_ADMIN' : 'EMPLOYEE',
-                'stats' => [
-                    'total_projects' => $totalProjects,
-                    'open_tickets' => $openTickets,
-                    'closed_tickets' => $closedTickets,
-                    'active_sprints' => $activeSprints,
-                ],
+                'stats' => $stats,
                 'recent_activities' => $recentActivities,
                 'critical_issues' => $criticalIssues,
             ]
@@ -172,7 +215,6 @@ class DashboardController extends Controller
         $orgUuid = $request->query('organization_uuid');
 
         if (!$orgUuid || $orgUuid === 'all') {
-            // Fallback to first user organization if not provided
             $org = $user->organizations()->first();
             $orgUuid = $org ? $org->uuid : null;
         }
@@ -200,6 +242,7 @@ class DashboardController extends Controller
             ->get();
 
         // 3. Tickets (Backlog + Active/Future sprints)
+        // Optimized: only load necessary relations and use withCount for comments
         $tickets = Ticket::whereIn('project_id', $projectIds)
             ->where(function ($query) {
                 $query->whereNull('sprint_id')
@@ -211,20 +254,18 @@ class DashboardController extends Controller
                 'project.organization',
                 'assignee',
                 'reporter',
-                'comments.user',
-                'attachments',
                 'sprint',
                 'parent',
                 'epic',
                 'subtasks',
-                'workLogs.user',
                 'starredByUsers' => function ($q) {
-                    $userId = auth()->id();
+                    $userId = \Illuminate\Support\Facades\Auth::id();
                     if ($userId) {
                         $q->where('users.id', $userId);
                     }
                 }
             ])
+            ->withCount('comments')
             ->get();
 
         return response()->json([
@@ -245,7 +286,6 @@ class DashboardController extends Controller
         $roleSlug = $user->role?->slug;
         $orgUuid = $request->query('organization_uuid');
 
-        // Resolve $orgUuid if not provided or 'all'
         if (!$orgUuid || $orgUuid === 'all') {
             if ($roleSlug !== 'admin') {
                 $firstOrg = $user->organizations()->first();
@@ -262,8 +302,12 @@ class DashboardController extends Controller
         }
 
         // 2. Assigned Tickets
-        $assignedTicketsQuery = Ticket::where('assignee_id', $user->id);
-        if ($orgUuid && $roleSlug !== 'admin') {
+        $assignedTicketsQuery = Ticket::where('assignee_id', $user->id)->where('type', '!=', 'Epic');
+        if ($projectUuid && $projectUuid !== 'all') {
+            $assignedTicketsQuery->whereHas('project', function ($q) use ($projectUuid) {
+                $q->where('uuid', $projectUuid);
+            });
+        } elseif ($orgUuid && $roleSlug !== 'admin') {
             $assignedTicketsQuery->whereHas('project.organization', function ($q) use ($orgUuid) {
                 $q->where('uuid', $orgUuid);
             });
@@ -279,12 +323,17 @@ class DashboardController extends Controller
             'starredByUsers' => function ($q) use ($user) {
                 $q->where('users.id', $user->id);
             }
-        ])->get();
+        ])->withCount('comments')->get();
 
-        // 3. Starred Tickets (Reported by me tab)
+        // 3. Starred Tickets
         $starredTickets = $user->starredTickets()
-            ->where(function ($query) use ($orgUuid) {
-                if ($orgUuid) {
+            ->where('type', '!=', 'Epic')
+            ->where(function ($query) use ($orgUuid, $projectUuid) {
+                if ($projectUuid && $projectUuid !== 'all') {
+                    $query->whereHas('project', function ($q) use ($projectUuid) {
+                        $q->where('uuid', $projectUuid);
+                    });
+                } else if ($orgUuid) {
                     $query->whereHas('project.organization', function ($q) use ($orgUuid) {
                         $q->where('uuid', $orgUuid);
                     });
@@ -302,12 +351,18 @@ class DashboardController extends Controller
                     $q->where('users.id', $user->id);
                 }
             ])
+            ->withCount('comments')
             ->get();
 
         // 4. Recently Viewed Tickets
         $recentTickets = $user->recentlyViewedTickets()
-            ->where(function ($query) use ($orgUuid) {
-                if ($orgUuid) {
+            ->where('type', '!=', 'Epic')
+            ->where(function ($query) use ($orgUuid, $projectUuid) {
+                if ($projectUuid && $projectUuid !== 'all') {
+                    $query->whereHas('project', function ($q) use ($projectUuid) {
+                        $q->where('uuid', $projectUuid);
+                    });
+                } else if ($orgUuid) {
                     $query->whereHas('project.organization', function ($q) use ($orgUuid) {
                         $q->where('uuid', $orgUuid);
                     });
@@ -325,10 +380,11 @@ class DashboardController extends Controller
                     $q->where('users.id', $user->id);
                 }
             ])
+            ->withCount('comments')
             ->take(10)
             ->get();
 
-        // 5. Analytics (Replicate index method logic)
+        // 5. Analytics (leveraging cache)
         $analytics = [];
         if ($roleSlug === 'admin' && (!$orgUuid || $orgUuid === 'all')) {
             $totalOrgs = Organization::count();
@@ -373,80 +429,117 @@ class DashboardController extends Controller
                         'open_tickets' => 0,
                         'closed_tickets' => 0,
                         'active_sprints' => 0,
+                        'epics_count' => 0,
+                        'epic_stories_count' => 0,
+                        'developer_days' => 0,
                     ],
                     'recent_activities' => [],
                     'critical_issues' => []
                 ];
             } else {
-                $organization = Organization::where('uuid', $orgUuid)->firstOrFail();
-                $totalProjects = Project::where('organization_id', $organization->id)->count();
-                $projectIds = Project::where('organization_id', $organization->id)->pluck('id');
-                
-                $openTickets = Ticket::whereIn('project_id', $projectIds)
-                    ->where('status', '!=', 'Done')
-                    ->count();
+                // Try reading cached stats
+                $cached = $this->dashboardRepo->getCachedStats($orgUuid, $roleSlug ?? 'employee');
+                if ($cached) {
+                    $analytics = [
+                        'role' => $roleSlug === 'org_admin' ? 'ORG_ADMIN' : 'EMPLOYEE',
+                        'stats' => $cached->stats,
+                        'recent_activities' => $cached->recent_activities,
+                        'critical_issues' => $cached->critical_issues,
+                    ];
+                } else {
+                    $organization = Organization::where('uuid', $orgUuid)->firstOrFail();
+                    if ($projectUuid && $projectUuid !== 'all') {
+                        $projectIds = Project::where('uuid', $projectUuid)->pluck('id');
+                        $totalProjects = 1;
+                    } else {
+                        $totalProjects = Project::where('organization_id', $organization->id)->count();
+                        $projectIds = Project::where('organization_id', $organization->id)->pluck('id');
+                    }
                     
-                $closedTickets = Ticket::whereIn('project_id', $projectIds)
-                    ->where('status', 'Done')
-                    ->count();
+                    $openTickets = Ticket::whereIn('project_id', $projectIds)
+                        ->where('type', '!=', 'Epic')
+                        ->where('status', '!=', 'Done')
+                        ->count();
+                        
+                    $closedTickets = Ticket::whereIn('project_id', $projectIds)
+                        ->where('type', '!=', 'Epic')
+                        ->where('status', 'Done')
+                        ->count();
 
-                $boardIds = DB::table('boards')->whereIn('project_id', $projectIds)->pluck('id');
-                $activeSprints = Sprint::whereIn('board_id', $boardIds)
-                    ->where('status', 'active')
-                    ->count();
+                    $boardIds = DB::table('boards')->whereIn('project_id', $projectIds)->pluck('id');
+                    $activeSprints = Sprint::whereIn('board_id', $boardIds)
+                        ->where('status', 'active')
+                        ->count();
 
-                $recentActivities = ActivityLog::with('user')
-                    ->whereIn('target_type', ['Ticket', 'Project', 'Sprint'])
-                    ->orderBy('created_at', 'desc')
-                    ->limit(10)
-                    ->get()
-                    ->map(function ($log) {
-                        return [
-                            'id' => $log->uuid,
-                            'user' => [
-                                'name' => $log->user?->name ?? 'System',
-                                'avatar' => $log->user?->avatar ?? 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
-                            ],
-                            'action' => $log->action,
-                            'target' => $log->target_type,
-                            'time' => $log->created_at->diffForHumans(),
-                            'type' => 'edit',
-                        ];
-                    });
+                    $epicsCount = Ticket::whereIn('project_id', $projectIds)->where('type', 'Epic')->count();
+                    $epicStoriesCount = Ticket::whereIn('project_id', $projectIds)->where('type', 'Story')->whereNotNull('epic_id')->count();
+                    
+                    $totalWorkLogHours = DB::table('ticket_work_logs')
+                        ->whereIn('ticket_id', Ticket::whereIn('project_id', $projectIds)->where('type', '!=', 'Epic')->pluck('id'))
+                        ->sum('hours');
+                    $developerDays = round($totalWorkLogHours / 8, 1);
 
-                $criticalIssues = Ticket::whereIn('project_id', $projectIds)
-                    ->whereIn('priority', ['High', 'Critical'])
-                    ->where('status', '!=', 'Done')
-                    ->with('assignee')
-                    ->limit(5)
-                    ->get()
-                    ->map(function ($ticket) {
-                        return [
-                            'id' => $ticket->uuid,
-                            'key' => $ticket->key,
-                            'title' => $ticket->title,
-                            'priority' => $ticket->priority,
-                            'status' => $ticket->status,
-                            'updatedAt' => $ticket->updated_at->diffForHumans(),
-                            'assignee' => $ticket->assignee ? [[
-                                'id' => $ticket->assignee->uuid,
-                                'name' => $ticket->assignee->name,
-                                'avatar' => $ticket->assignee->avatar ?? 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
-                            ]] : [],
-                        ];
-                    });
+                    $recentActivities = ActivityLog::with('user')
+                        ->whereIn('target_type', ['Ticket', 'Project', 'Sprint'])
+                        ->orderBy('created_at', 'desc')
+                        ->limit(10)
+                        ->get()
+                        ->map(function ($log) {
+                            return [
+                                'id' => $log->uuid,
+                                'user' => [
+                                    'name' => $log->user?->name ?? 'System',
+                                    'avatar' => $log->user?->avatar ?? 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
+                                ],
+                                'action' => $log->action,
+                                'target' => $log->target_type,
+                                'time' => $log->created_at->diffForHumans(),
+                                'type' => 'edit',
+                            ];
+                        })->toArray();
 
-                $analytics = [
-                    'role' => $roleSlug === 'org_admin' ? 'ORG_ADMIN' : 'EMPLOYEE',
-                    'stats' => [
+                    $criticalIssues = Ticket::whereIn('project_id', $projectIds)
+                        ->where('type', '!=', 'Epic')
+                        ->whereIn('priority', ['High', 'Critical'])
+                        ->where('status', '!=', 'Done')
+                        ->with('assignee')
+                        ->limit(5)
+                        ->get()
+                        ->map(function ($ticket) {
+                            return [
+                                'id' => $ticket->uuid,
+                                'key' => $ticket->key,
+                                'title' => $ticket->title,
+                                'priority' => $ticket->priority,
+                                'status' => $ticket->status,
+                                'updatedAt' => $ticket->updated_at->diffForHumans(),
+                                'assignee' => $ticket->assignee ? [[
+                                    'id' => $ticket->assignee->uuid,
+                                    'name' => $ticket->assignee->name,
+                                    'avatar' => $ticket->assignee->avatar ?? 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop',
+                                ]] : [],
+                            ];
+                        })->toArray();
+
+                    $stats = [
                         'total_projects' => $totalProjects,
                         'open_tickets' => $openTickets,
                         'closed_tickets' => $closedTickets,
                         'active_sprints' => $activeSprints,
-                    ],
-                    'recent_activities' => $recentActivities,
-                    'critical_issues' => $criticalIssues,
-                ];
+                        'epics_count' => $epicsCount,
+                        'epic_stories_count' => $epicStoriesCount,
+                        'developer_days' => $developerDays,
+                    ];
+
+                    $this->dashboardRepo->updateCachedStats($orgUuid, $roleSlug ?? 'employee', $stats, $recentActivities, $criticalIssues);
+
+                    $analytics = [
+                        'role' => $roleSlug === 'org_admin' ? 'ORG_ADMIN' : 'EMPLOYEE',
+                        'stats' => $stats,
+                        'recent_activities' => $recentActivities,
+                        'critical_issues' => $criticalIssues,
+                    ];
+                }
             }
         }
 

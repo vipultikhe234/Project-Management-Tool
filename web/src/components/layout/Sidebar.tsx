@@ -12,31 +12,14 @@ import {
   Folder,
   ChevronDown,
   ChevronRight,
-  User as UserIcon,
-  Sparkles,
-  Settings
+  Settings,
+  HelpCircle,
+  BookOpen,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import api from '../../lib/api';
-
-interface SubModule {
-  id: number;
-  uuid: string;
-  name: string;
-  slug: string;
-  route: string;
-  sort_order: number;
-}
-
-interface Module {
-  id: number;
-  uuid: string;
-  name: string;
-  slug: string;
-  icon: string;
-  sort_order: number;
-  sub_modules: SubModule[];
-}
+import { useWorkspace } from '../../context/WorkspaceContext';
 
 const iconMap: Record<string, React.ComponentType<any>> = {
   LayoutDashboard,
@@ -49,163 +32,218 @@ const iconMap: Record<string, React.ComponentType<any>> = {
   Shield,
   Folder,
   Settings,
+  MessageSquare
 };
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
-  const [modules, setModules] = useState<Module[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [openAccordions, setOpenAccordions] = useState<Record<string, boolean>>({});
+  const { projects, activeProject, setActiveProject } = useWorkspace();
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [loadingOrgs, setLoadingOrgs] = useState(true);
+  
+  // Collapsed states for navigation categories
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
+    workspace: false,
+    projects: false,
+    planning: false,
+    reports: false,
+    administration: true,
+    settings: true,
+  });
 
-  // Get user details from localStorage
-  const userString = localStorage.getItem('user');
-  const user = userString ? JSON.parse(userString) : { name: 'Guest', email: '', role: { name: 'Guest', slug: '' }, permissions: [], modules: [] };
+  // Get user details from localStorage with robust state tracking
+  const [user, setUser] = useState<any>(() => {
+    const userString = localStorage.getItem('user');
+    return userString ? JSON.parse(userString) : { name: 'Guest', email: '', role: { name: 'Guest', slug: '' }, permissions: [], modules: [] };
+  });
+  
+  const selectedOrgUuid = localStorage.getItem('selected_org_uuid') || user.organizations?.[0]?.uuid || '';
+  
+  const isAdmin = 
+    user.role_id === 1 || 
+    user.role_id === '1' ||
+    user.role?.id === 1 || 
+    user.role?.id === '1' || 
+    user.role?.slug === 'admin' || 
+    user.role === 'admin' || 
+    user.role === 'Admin' || 
+    user.role === 'ADMIN' ||
+    (typeof user.role === 'object' && user.role?.name?.toLowerCase() === 'admin');
 
+  // Load organizations for workspace switcher and revalidate user details from /me
   useEffect(() => {
-    // 1. Try to load modules synchronously from localStorage
-    let cachedModules: Module[] = [];
-    if (user && user.modules && Array.isArray(user.modules)) {
-      cachedModules = user.modules;
+    if (isAdmin) {
+      setLoadingOrgs(true);
+      api.get('/organizations')
+        .then(response => {
+          setOrganizations(response.data.data || []);
+        })
+        .catch(err => {
+          console.error('Failed to load organizations in sidebar', err);
+        })
+        .finally(() => {
+          setLoadingOrgs(false);
+        });
+    } else {
+      if (user.organizations && user.organizations.length > 0) {
+        setOrganizations(user.organizations);
+      }
+      setLoadingOrgs(false);
     }
 
-    if (cachedModules.length > 0) {
-      setModules(cachedModules);
-      setLoading(false);
-
-      // Auto-expand any accordion that contains the active route
-      const initialAccordions: Record<string, boolean> = {};
-      cachedModules.forEach(mod => {
-        const containsActive = mod.sub_modules?.some(sub => sub.route === location.pathname);
-        if (containsActive) {
-          initialAccordions[mod.uuid] = true;
-        }
+    // Revalidate user details from /me to fetch fresh permissions & modules hierarchy
+    api.get('/me')
+      .then(response => {
+        const latestUser = response.data.data;
+        localStorage.setItem('user', JSON.stringify(latestUser));
+        setUser(latestUser);
+      })
+      .catch(err => {
+        console.error('Failed to revalidate user details in sidebar:', err);
       });
-      setOpenAccordions(initialAccordions);
-    }
-
-    // 2. Background revalidation from /me
-    revalidateModules(cachedModules);
   }, []);
 
-  const revalidateModules = async (cached: Module[]) => {
-    try {
-      const response = await api.get('/me');
-      const latestUser = response.data.data;
-      
-      // Update local storage
-      localStorage.setItem('user', JSON.stringify(latestUser));
-
-      const latestModules: Module[] = latestUser.modules || [];
-
-      // Check if modules have changed to avoid unnecessary re-renders
-      if (JSON.stringify(cached) !== JSON.stringify(latestModules) || cached.length === 0) {
-        setModules(latestModules);
-        
-        // Auto-expand accordions
-        const initialAccordions: Record<string, boolean> = {};
-        latestModules.forEach(mod => {
-          const containsActive = mod.sub_modules?.some(sub => sub.route === location.pathname);
-          if (containsActive) {
-            initialAccordions[mod.uuid] = true;
-          }
-        });
-        setOpenAccordions(prev => ({ ...prev, ...initialAccordions }));
-      }
-    } catch (err) {
-      console.error('Failed to revalidate sidebar modules:', err);
-    } finally {
-      setLoading(false);
-    }
+  const handleOrgChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const uuid = e.target.value;
+    localStorage.setItem('selected_org_uuid', uuid);
+    // Reload page to re-initialize layout with new workspace context
+    window.location.reload();
   };
 
-  const toggleAccordion = (uuid: string) => {
-    setOpenAccordions(prev => ({
+  const toggleGroup = (groupId: string) => {
+    setCollapsedGroups(prev => ({
       ...prev,
-      [uuid]: !prev[uuid]
+      [groupId]: !prev[groupId]
     }));
   };
 
+  const modules: any[] = user.modules || [];
+
   return (
     <aside className="fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-white flex flex-col shrink-0 z-40 hidden lg:flex border-r border-slate-200 shadow-sm">
-      <nav className="flex-1 overflow-y-auto py-4 space-y-1.5 scrollbar-none">
-        {loading ? (
-          <div className="flex items-center gap-2.5 px-6 py-3 text-slate-400 text-xs">
-            <div className="w-3.5 h-3.5 border border-slate-200 border-t-indigo-500 rounded-full animate-spin" />
-            Loading navigation...
+      
+      {/* Top Section: Workspace & Project switcher dropdowns (Jira style) */}
+      <div className="p-4 border-b border-slate-100 space-y-3.5 bg-slate-50/40">
+        
+        {/* Workspace Tier */}
+        <div className="space-y-1">
+          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Workspace</label>
+          <div className="relative group">
+            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-500 pointer-events-none" />
+            <select
+              value={selectedOrgUuid}
+              onChange={handleOrgChange}
+              disabled={loadingOrgs}
+              className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer appearance-none shadow-sm transition-all"
+            >
+              {organizations.map((org: any) => (
+                <option key={org.uuid} value={org.uuid}>
+                  {org.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none transition-transform group-hover:translate-y-[-35%]" />
           </div>
-        ) : modules.length === 0 ? (
-          <div className="px-6 py-4 text-xs text-slate-400 italic">
-            No accessible sections.
+        </div>
+
+        {/* Project Tier */}
+        <div className="space-y-1">
+          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Project</label>
+          <div className="relative group">
+            <Folder className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500 pointer-events-none" />
+            <select
+              value={activeProject?.uuid || ''}
+              onChange={(e) => {
+                const found = projects.find(p => p.uuid === e.target.value);
+                if (found) {
+                  setActiveProject(found);
+                }
+              }}
+              disabled={projects.length === 0}
+              className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer appearance-none shadow-sm transition-all disabled:opacity-50"
+            >
+              {projects.length === 0 ? (
+                <option value="">No Projects</option>
+              ) : (
+                projects.map((p) => (
+                  <option key={p.uuid} value={p.uuid}>
+                    {p.name}
+                  </option>
+                ))
+              )}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none transition-transform group-hover:translate-y-[-35%]" />
           </div>
-        ) : (
-          modules.filter(mod => mod.slug !== 'issues').map((mod) => {
-            const IconComp = iconMap[mod.icon] || Folder;
-            const hasMultiple = mod.sub_modules.length > 1;
-            const isExpanded = openAccordions[mod.uuid];
+        </div>
+      </div>
 
-            // Case A: Parent Module has exactly one sub-module, render as a direct single link
-            if (!hasMultiple) {
-              const singleSub = mod.sub_modules[0];
-              return (
-                <NavLink
-                  key={singleSub.uuid}
-                  to={singleSub.route}
-                  className={({ isActive }) => cn(
-                    "flex items-center gap-3 px-6 py-3 transition-all duration-200 text-sm font-medium border-l-4",
-                    isActive
-                      ? "bg-indigo-50 text-indigo-600 border-indigo-600 font-bold"
-                      : "text-slate-600 hover:text-slate-900 border-transparent hover:bg-slate-50"
-                  )}
-                >
-                  <IconComp className="w-5 h-5 shrink-0" />
-                  <span className="font-sans truncate">{mod.name}</span>
-                </NavLink>
-              );
-            }
+      {/* Navigation Groups List (Fully Dynamic & Database-driven) */}
+      <nav className="flex-1 overflow-y-auto py-3 space-y-2 scrollbar-none">
+        {modules.map((group) => {
+          const GroupIcon = iconMap[group.icon] || Folder;
+          const isCollapsed = collapsedGroups[group.slug];
+          const subModules = group.sub_modules || [];
 
-            // Case B: Parent Module has multiple sub-modules, render as an accordion category
-            const containsActive = mod.sub_modules.some(sub => sub.route === location.pathname);
+          if (subModules.length === 0) return null;
 
-            return (
-              <div key={mod.uuid} className="space-y-1">
-                <button
-                  onClick={() => toggleAccordion(mod.uuid)}
-                  className={cn(
-                    "w-full flex items-center justify-between px-6 py-3 text-sm font-medium transition-colors border-l-4 border-transparent hover:bg-slate-50 text-slate-600 hover:text-slate-900",
-                    containsActive && "text-slate-950 font-bold"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <IconComp className={cn("w-5 h-5 shrink-0", containsActive ? "text-indigo-600" : "text-slate-400")} />
-                    <span className="font-sans truncate">{mod.name}</span>
-                  </div>
-                  {isExpanded ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-                </button>
-
-                {/* Submodule dropdown panel */}
-                {isExpanded && (
-                  <div className="pl-14 pr-4 py-1 space-y-1.5 bg-slate-50/50 border-l-4 border-transparent">
-                    {mod.sub_modules.map((sub) => (
-                      <NavLink
-                        key={sub.uuid}
-                        to={sub.route}
-                        className={({ isActive }) => cn(
-                          "block py-1.5 px-3 rounded-lg text-xs transition-all duration-150",
-                          isActive
-                            ? "bg-indigo-50/50 text-indigo-600 font-bold"
-                            : "text-slate-500 hover:text-slate-900 hover:bg-slate-100/50"
-                        )}
-                      >
-                        {sub.name}
-                      </NavLink>
-                    ))}
-                  </div>
+          return (
+            <div key={group.uuid} className="space-y-0.5">
+              {/* Category Header */}
+              <button
+                onClick={() => toggleGroup(group.slug)}
+                className="w-full flex items-center justify-between px-5 py-1.5 text-left group transition-colors"
+              >
+                <div className="flex items-center gap-2 text-slate-400 group-hover:text-slate-700">
+                  <GroupIcon className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">{group.name}</span>
+                </div>
+                {isCollapsed ? (
+                  <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600" />
                 )}
-              </div>
-            );
-          })
-        )}
+              </button>
+
+              {/* Category Items */}
+              {!isCollapsed && (
+                <div className="pl-5 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {subModules.map((item: any) => (
+                    <NavLink
+                      key={item.uuid}
+                      to={item.route}
+                      className={({ isActive }) => cn(
+                        "flex items-center gap-2.5 px-4 py-2 text-xs font-semibold rounded-l-xl transition-all border-l-2",
+                        isActive
+                          ? "bg-indigo-50/70 text-indigo-600 border-indigo-600 font-bold"
+                          : "text-slate-600 border-transparent hover:text-slate-900 hover:bg-slate-50/50"
+                      )}
+                    >
+                      <span className="truncate">{item.name}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </nav>
+
+      {/* Bottom Section: System Help Center & Doc links */}
+      <div className="border-t border-slate-100 p-4 space-y-2 bg-slate-50/30">
+        <a href="#" className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-all">
+          <HelpCircle className="w-4 h-4 text-slate-400" />
+          <span>Help Center</span>
+        </a>
+        <a href="#" className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-all">
+          <BookOpen className="w-4 h-4 text-slate-400" />
+          <span>Documentation</span>
+        </a>
+        <a href="#" className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-indigo-600 transition-all">
+          <MessageSquare className="w-4 h-4 text-slate-400" />
+          <span>Send Feedback</span>
+        </a>
+      </div>
+
     </aside>
   );
 };

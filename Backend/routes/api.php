@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\v1\DashboardController;
 use App\Http\Controllers\Api\v1\ModuleController;
 use App\Http\Controllers\Api\v1\PermissionController;
 use App\Http\Controllers\Api\v1\ReportController;
+use App\Http\Controllers\Api\v1\AiController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -59,10 +60,17 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     Route::put('/projects/{uuid}', [ProjectController::class, 'update']);
     Route::delete('/projects/{uuid}', [ProjectController::class, 'destroy']);
     Route::post('/projects/{uuid}/members', [ProjectController::class, 'addMember']);
+    Route::get('/projects/{uuid}/okrs', [ProjectController::class, 'getOkrs']);
+    Route::post('/projects/{uuid}/okrs', [ProjectController::class, 'storeOkr']);
+    Route::get('/projects/{uuid}/risks', [ProjectController::class, 'getRisks']);
+    Route::post('/projects/{uuid}/risks', [ProjectController::class, 'storeRisk']);
+    Route::get('/projects/{uuid}/health', [ProjectController::class, 'getHealthScore']);
 
     // Sprints
     Route::get('/sprints', [SprintController::class, 'index']);
     Route::post('/sprints', [SprintController::class, 'store']);
+    Route::put('/sprints/{uuid}', [SprintController::class, 'update']);
+    Route::delete('/sprints/{uuid}', [SprintController::class, 'destroy']);
     Route::put('/sprints/{uuid}/start', [SprintController::class, 'start']);
     Route::put('/sprints/{uuid}/complete', [SprintController::class, 'complete']);
 
@@ -95,6 +103,7 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
     Route::get('/workspace/bootstrap', [DashboardController::class, 'bootstrap']);
     Route::get('/your-work', [DashboardController::class, 'yourWork']);
     Route::get('/reports', [ReportController::class, 'index']);
+    Route::get('/reports/export', [ReportController::class, 'export']);
 
     // Access Management
     Route::get('/modules', [ModuleController::class, 'index']);
@@ -105,4 +114,9 @@ Route::prefix('v1')->middleware('auth:api')->group(function () {
 
     Route::get('/permissions/role/{role_id}', [PermissionController::class, 'getRolePermissions']);
     Route::post('/permissions/toggle', [PermissionController::class, 'togglePermission']);
+
+    // AI Features
+    Route::post('/ai/generate-description', [AiController::class, 'generateDescription']);
+    Route::post('/ai/analyze-bug', [AiController::class, 'analyzeBug']);
+    Route::post('/ai/summarize-sprint', [AiController::class, 'summarizeSprint']);
 });

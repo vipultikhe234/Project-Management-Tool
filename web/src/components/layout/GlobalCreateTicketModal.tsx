@@ -101,7 +101,7 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
       setEpicUuid('');
       setSprintUuid(defaultSprintUuid || '');
       setParentUuid('');
-      
+
       // Load allowed types and default to first allowed type
       const allowed = selectedProject.allowed_types || ['Story', 'Task', 'Bug', 'Epic', 'Subtask', 'Spike'];
       if (!allowed.includes(type)) {
@@ -112,8 +112,8 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
       setMembers(selectedProject.members || []);
       setEpics(contextTickets.filter((t: any) => t.project?.uuid === selectedProject.uuid && t.type === 'Epic') as any);
       setParentIssues(contextTickets.filter((t: any) => t.project?.uuid === selectedProject.uuid) as any);
-      setSprints(contextSprints.filter((s: any) => 
-        s.project_uuid === selectedProject.uuid || 
+      setSprints(contextSprints.filter((s: any) =>
+        s.project_uuid === selectedProject.uuid ||
         selectedProject.boards?.some((b: any) => b.uuid === s.board_uuid)
       ));
     }
@@ -180,7 +180,7 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
-        
+
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 rounded-t-2xl">
           <div className="flex items-center gap-3">
@@ -192,7 +192,7 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
               <p className="text-xs text-slate-400 font-medium">Create a new Epic, Story, Task, Bug, or Spike globally.</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-800 rounded-lg transition-colors"
           >
@@ -219,21 +219,21 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
           {/* Project Selector */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Project *</label>
-              <select
-                value={selectedProject?.uuid || ''}
-                onChange={(e) => {
-                  const proj = projects.find(p => p.uuid === e.target.value);
-                  if (proj) setSelectedProject(proj);
-                }}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-medium"
-                required
-              >
-                {projects.map(p => (
-                  <option key={p.uuid} value={p.uuid}>
-                    {p.name} ({p.key})
-                  </option>
-                ))}
-              </select>
+            <select
+              value={selectedProject?.uuid || ''}
+              onChange={(e) => {
+                const proj = projects.find(p => p.uuid === e.target.value);
+                if (proj) setSelectedProject(proj);
+              }}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-medium"
+              required
+            >
+              {projects.map(p => (
+                <option key={p.uuid} value={p.uuid}>
+                  {p.name} ({p.key})
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -405,30 +405,30 @@ export const GlobalCreateTicketModal: React.FC<GlobalCreateTicketModalProps> = (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Linked Epic</label>
-                  <select
-                    value={epicUuid}
-                    onChange={(e) => setEpicUuid(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-medium"
-                  >
-                    <option value="">No Epic (Standalone)</option>
-                    {epics.map(epic => (
-                      <option key={epic.uuid} value={epic.uuid}>{epic.key} - {epic.title}</option>
-                    ))}
-                  </select>
+                <select
+                  value={epicUuid}
+                  onChange={(e) => setEpicUuid(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-medium"
+                >
+                  <option value="">No Epic (Standalone)</option>
+                  {epics.map(epic => (
+                    <option key={epic.uuid} value={epic.uuid}>{epic.key} - {epic.title}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sprint</label>
-                  <select
-                    value={sprintUuid}
-                    onChange={(e) => setSprintUuid(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-medium"
-                  >
-                    <option value="">None (Backlog)</option>
-                    {sprints.map((s: any) => (
-                      <option key={s.uuid} value={s.uuid}>{s.name}</option>
-                    ))}
-                  </select>
+                <select
+                  value={sprintUuid}
+                  onChange={(e) => setSprintUuid(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all text-sm font-medium"
+                >
+                  <option value="">None (Backlog)</option>
+                  {sprints.map((s: any) => (
+                    <option key={s.uuid} value={s.uuid}>{s.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
           )}

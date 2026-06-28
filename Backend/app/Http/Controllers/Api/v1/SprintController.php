@@ -45,6 +45,32 @@ class SprintController extends Controller
     }
 
     /**
+     * Update an existing sprint.
+     */
+    public function update(SprintRequest $request, string $uuid)
+    {
+        try {
+            $sprint = $this->sprintService->updateSprint($uuid, $request->validated());
+            return new SprintResource($sprint);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
+        }
+    }
+
+    /**
+     * Delete an existing sprint.
+     */
+    public function destroy(string $uuid)
+    {
+        try {
+            $this->sprintService->destroySprint($uuid);
+            return response()->json(['message' => 'Sprint deleted successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 400);
+        }
+    }
+
+    /**
      * Start a sprint (make it active).
      */
     public function start(Request $request, string $uuid)

@@ -26,7 +26,7 @@ class ReportController extends Controller
         $organization = Organization::where('uuid', $orgUuid)->firstOrFail();
         $projectIds = Project::where('organization_id', $organization->id)->pluck('id');
 
-        $query = Ticket::whereIn('project_id', $projectIds);
+        $query = Ticket::whereIn('project_id', $projectIds)->where('type', '!=', 'Epic');
 
         // Apply Project filter
         $projectUuid = $request->query('project_uuid');
@@ -84,7 +84,7 @@ class ReportController extends Controller
             'subtasks',
             'workLogs.user',
             'starredByUsers' => function ($q) {
-                $userId = auth()->id();
+                $userId = \Illuminate\Support\Facades\Auth::id();
                 if ($userId) {
                     $q->where('users.id', $userId);
                 }
@@ -150,7 +150,7 @@ class ReportController extends Controller
             ->get();
 
         // Get unique assignee IDs who have tickets matching all active filters EXCEPT assignee itself
-        $usersQuery = Ticket::whereIn('project_id', $projectIds);
+        $usersQuery = Ticket::whereIn('project_id', $projectIds)->where('type', '!=', 'Epic');
         if ($projectUuid && $projectUuid !== 'all') {
             $project = Project::where('uuid', $projectUuid)->first();
             if ($project) {
@@ -229,5 +229,125 @@ class ReportController extends Controller
                 'metadata' => $metadata
             ]
         ]);
+    }
+
+    /**
+     * Export report data as CSV file.
+     */
+    public function export(Request $request)
+    {
+        $orgUuid = $request->query('organization_uuid');
+        if (!$orgUuid) {
+            return response()->json(['message' => 'organization_uuid is required'], 422);
+        }
+
+        $organization = Organization::where('uuid', $orgUuid)->firstOrFail();
+        $projectIds = Project::where('organization_id', $organization->id)->pluck('id');
+
+        $query = Ticket::whereIn('project_id', $projectIds)->where('type', '!=', 'Epic');
+
+        // Apply Project filter
+        $projectUuid = $request->query('project_uuid');
+        if ($projectUuid && $projectUuid !== 'all') {
+            $project = Project::where('uuid', $projectUuid)->first();
+            if ($project) {
+                $query->where('project_id', $project->id);
+            }
+        }
+
+        // Apply Sprint filter
+        $sprintUuid = $request->query('sprint_uuid');
+        if ($sprintUuid && $sprintUuid !== 'all') {
+            $sprint = Sprint::where('uuid', $sprintUuid)->first();
+            if ($sprint) {
+                $query->where('sprint_id', $sprint->id);
+            }
+        }
+
+        // Apply Epic filter
+        $epicUuid = $request->query('epic_uuid');
+        if ($epicUuid && $epicUuid !== 'all') {
+            $epic = Ticket::where('uuid', $epicUuid)->where('type', 'Epic')->first();
+            if ($epic) {
+                $query->where('epic_id', $epic->id);
+            }
+        }
+
+        // Apply User filter
+        $userUuid = $request->query('user_uuid');
+        if ($userUuid && $userUuid !== 'all') {
+            $user = User::where('uuid', $userUuid)->first();
+            if ($user) {
+                $query->where('assignee_id', $user->id);
+            }
+        }
+
+        // Apply Date filter
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+        if ($startDate) {
+            $query->whereDate('created_at', '>=', $startDate);
+        }
+        if ($endDate) {
+            $query->whereDate('created_at', '<=', $endDate);
+        }
+
+        $tickets = $query->with(['project', 'assignee', 'reporter', 'sprint', 'epic'])->get();
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="sprintnix_report_' . date('Ymd_His') . '.csv"',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ];
+
+        $callback = function() use ($tickets) {
+            $file = fopen('php://output', 'w');
+            
+            // Add UTF-8 BOM for proper Excel encoding
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            // Headers
+            fputcsv($file, [
+                'Issue Key',
+                'Title',
+                'Type',
+                'Priority',
+                'Status',
+                'Story Points',
+                'Project Key',
+                'Project Name',
+                'Sprint',
+                'Epic',
+                'Assignee',
+                'Reporter',
+                'Due Date',
+                'Created At'
+            ]);
+
+            foreach ($tickets as $ticket) {
+                fputcsv($file, [
+                    $ticket->key,
+                    $ticket->title,
+                    $ticket->type,
+                    $ticket->priority,
+                    $ticket->status,
+                    $ticket->story_points ?? '0',
+                    $ticket->project?->key ?? '',
+                    $ticket->project?->name ?? '',
+                    $ticket->sprint?->name ?? 'Backlog',
+                    $ticket->epic?->title ?? 'None',
+                    $ticket->assignee?->name ?? 'Unassigned',
+                    $ticket->reporter?->name ?? 'None',
+                    $ticket->due_date ? ($ticket->due_date instanceof \Carbon\Carbon ? $ticket->due_date->toDateString() : (string)$ticket->due_date) : '',
+                    $ticket->created_at->toDateTimeString()
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

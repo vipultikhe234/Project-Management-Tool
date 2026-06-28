@@ -44,6 +44,10 @@ export const Organizations: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [planFilter, setPlanFilter] = useState<string>('all');
 
+  const userString = localStorage.getItem('user');
+  const loggedInUser = userString ? JSON.parse(userString) : null;
+  const isSuperAdmin = loggedInUser?.role?.slug === 'admin';
+
   useEffect(() => {
     fetchOrganizations();
   }, []);
@@ -140,12 +144,14 @@ export const Organizations: React.FC = () => {
             </select>
           </div>
         </div>
-        <button 
-          onClick={openCreateModal}
-          className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow cursor-pointer shrink-0"
-        >
-          <Plus className="w-4 h-4" /> Create Organization
-        </button>
+        {isSuperAdmin && (
+          <button 
+            onClick={openCreateModal}
+            className="w-full sm:w-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all active:scale-95 flex items-center justify-center gap-1.5 shadow cursor-pointer shrink-0"
+          >
+            <Plus className="w-4 h-4" /> Create Organization
+          </button>
+        )}
       </div>
 
       {/* Stats Bar */}
@@ -304,7 +310,8 @@ export const Organizations: React.FC = () => {
                   <select 
                     value={currentOrg.subscription_plan}
                     onChange={(e) => setCurrentOrg({...currentOrg, subscription_plan: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    disabled={!isSuperAdmin}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <option value="FREE">FREE</option>
                     <option value="PRO">PRO</option>

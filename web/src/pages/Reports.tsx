@@ -116,7 +116,7 @@ interface SummaryData {
 
 export const Reports: React.FC = () => {
   // Filter States
-  const [selectedProject, setSelectedProject] = useState<string>('all');
+  const [selectedProject, setSelectedProject] = useState<string>(activeProject?.uuid || 'all');
   const [selectedSprint, setSelectedSprint] = useState<string>('all');
   const [selectedEpic, setSelectedEpic] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<string>('all');
@@ -157,6 +157,12 @@ export const Reports: React.FC = () => {
       });
     }
   }, [orgUuid]);
+
+  useEffect(() => {
+    if (activeProject) {
+      setSelectedProject(activeProject.uuid);
+    }
+  }, [activeProject?.uuid]);
 
   // Reactive effect to fetch filtered report data automatically when any filter changes
   useEffect(() => {
@@ -214,6 +220,34 @@ export const Reports: React.FC = () => {
       console.error('Failed to load reports data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      const response = await api.get('/reports/export', {
+        params: {
+          organization_uuid: orgUuid,
+          project_uuid: selectedProject,
+          sprint_uuid: selectedSprint,
+          epic_uuid: selectedEpic,
+          user_uuid: selectedUser,
+          start_date: startDate || undefined,
+          end_date: endDate || undefined
+        },
+        responseType: 'blob'
+      });
+      
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `sprintnix_report_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      console.error('Failed to download report:', err);
     }
   };
 
@@ -387,10 +421,34 @@ export const Reports: React.FC = () => {
 
       </div>
 
-      {loading ? (
-        <div className="min-h-[40vh] flex flex-col items-center justify-center gap-4">
-          <div className="w-8 h-8 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
-          <p className="text-slate-500 font-medium">Crunching dashboard statistics...</p>
+      {loading && !summary ? (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 animate-pulse h-32 flex flex-col justify-between">
+              <div className="h-3 w-24 bg-slate-200 rounded-full" />
+              <div className="h-8 w-16 bg-slate-200 rounded-md" />
+              <div className="h-1.5 bg-slate-100 rounded-full w-full" />
+            </div>
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 animate-pulse h-32 flex flex-col justify-between">
+              <div className="h-3 w-24 bg-slate-200 rounded-full" />
+              <div className="h-8 w-16 bg-slate-200 rounded-md" />
+              <div className="h-1.5 bg-slate-100 rounded-full w-full" />
+            </div>
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 animate-pulse h-32 flex flex-col justify-between">
+              <div className="h-3 w-24 bg-slate-200 rounded-full" />
+              <div className="h-8 w-16 bg-slate-200 rounded-md" />
+              <div className="h-1.5 bg-slate-100 rounded-full w-full" />
+            </div>
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 animate-pulse h-32 flex flex-col justify-between">
+              <div className="h-3 w-24 bg-slate-200 rounded-full" />
+              <div className="h-8 w-16 bg-slate-200 rounded-md" />
+              <div className="h-1.5 bg-slate-100 rounded-full w-full" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm col-span-12 lg:col-span-5 h-72 animate-pulse" />
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm col-span-12 lg:col-span-7 h-72 animate-pulse" />
+          </div>
         </div>
       ) : (
         <>
@@ -628,16 +686,24 @@ export const Reports: React.FC = () => {
                 <FileText className="w-4 h-4 text-indigo-500" /> Filtered Ticket List ({searchedTickets.length})
               </h3>
               
-              {/* Client side search box */}
-              <div className="relative w-full sm:w-64">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                <input
-                  type="text"
-                  placeholder="Search key or title..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <button
+                  onClick={handleExportCSV}
+                  className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all cursor-pointer shadow active:scale-95 whitespace-nowrap"
+                >
+                  <FileText className="w-3.5 h-3.5" /> Export Excel / CSV
+                </button>
+                {/* Client side search box */}
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Search key or title..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-4 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
             </div>
 

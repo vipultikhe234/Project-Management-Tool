@@ -7,33 +7,30 @@ use App\Models\Board;
 use App\Models\User;
 use App\Models\Organization;
 use App\Models\Role;
+use App\Repositories\Contracts\ProjectRepositoryInterface;
+use App\Repositories\Contracts\OrganizationRepositoryInterface;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Database\Eloquent\Collection;
 
 class ProjectService
 {
+    protected $projectRepository;
+    protected $orgRepository;
+
+    public function __construct(
+        ProjectRepositoryInterface $projectRepository,
+        OrganizationRepositoryInterface $orgRepository
+    ) {
+        $this->projectRepository = $projectRepository;
+        $this->orgRepository = $orgRepository;
+    }
+
     /**
      * List all projects for a user within an organization.
      */
-    public function listProjectsForUser(User $user, string $orgUuid): Collection
+    public function listProjectsForUser(User $user, string $orgUuid)
     {
-        $organization = Organization::where('uuid', $orgUuid)->firstOrFail();
-        
-        // Super admin can see all projects in the org
-        if ($user->role?->slug === 'admin') {
-            return Project::where('organization_id', $organization->id)
-                ->with(['boards', 'members.role', 'organization'])
-                ->get();
-        }
-
-        // Other roles see projects they are members of
-        return Project::where('organization_id', $organization->id)
-            ->whereHas('members', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
-            })
-            ->with(['boards', 'members.role', 'organization'])
-            ->get();
+        return $this->projectRepository->listForUser($user, $orgUuid);
     }
 
     /**
@@ -42,10 +39,10 @@ class ProjectService
     public function createProject(array $data, User $user): Project
     {
         return DB::transaction(function () use ($data, $user) {
-            $organization = Organization::where('uuid', $data['organization_uuid'])->firstOrFail();
+            $organization = $this->orgRepository->findByUuid($data['organization_uuid']);
             
             // Create Project
-            $project = Project::create([
+            $project = $this->projectRepository->create([
                 'uuid' => (string) Str::uuid(),
                 'organization_id' => $organization->id,
                 'key' => strtoupper($data['key']),
@@ -60,10 +57,7 @@ class ProjectService
             $orgAdminRole = Role::where('slug', 'org_admin')->first();
             $roleId = $orgAdminRole ? $orgAdminRole->id : $user->role_id;
             
-            $project->members()->attach($user->id, [
-                'role_id' => $roleId,
-                'joined_at' => now(),
-            ]);
+            $this->projectRepository->addMember($project, $user->id, $roleId);
 
             // Create Default Board
             Board::create([
@@ -83,7 +77,7 @@ class ProjectService
      */
     public function findByUuid(string $uuid): Project
     {
-        return Project::where('uuid', $uuid)->with(['members', 'boards'])->firstOrFail();
+        return $this->projectRepository->findByUuid($uuid);
     }
 
     /**
@@ -91,8 +85,7 @@ class ProjectService
      */
     public function updateProject(Project $project, array $data): Project
     {
-        $project->update($data);
-        return $project;
+        return $this->projectRepository->update($project, $data);
     }
 
     /**
@@ -100,7 +93,7 @@ class ProjectService
      */
     public function deleteProject(Project $project): bool
     {
-        return $project->delete();
+        return $this->projectRepository->delete($project);
     }
 
     /**
@@ -114,10 +107,7 @@ class ProjectService
             return false;
         }
 
-        $project->members()->attach($user->id, [
-            'role_id' => $roleId,
-            'joined_at' => now(),
-        ]);
+        $this->projectRepository->addMember($project, $user->id, $roleId);
 
         return true;
     }

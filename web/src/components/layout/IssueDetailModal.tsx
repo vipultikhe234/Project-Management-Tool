@@ -14,7 +14,8 @@ import {
   X,
   Maximize2,
   Lock,
-  Eye
+  Eye,
+  Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../../lib/api';
@@ -360,6 +361,47 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ isOpen, onCl
       alert('Failed to update issue description');
     } finally {
       setSavingDesc(false);
+    }
+  };
+
+  const [generatingAiDesc, setGeneratingAiDesc] = useState(false);
+  const handleAiGenerateDesc = async () => {
+    if (!issue) return;
+    setGeneratingAiDesc(true);
+    try {
+      const response = await api.post('/ai/generate-description', {
+        title: issue.title,
+        type: issue.type
+      });
+      setTempDesc(response.data.data.text);
+      setIsEditingDesc(true);
+    } catch (err) {
+      console.error('Failed to generate description using Gemini AI', err);
+    } finally {
+      setGeneratingAiDesc(false);
+    }
+  };
+
+  const [analyzingBug, setAnalyzingBug] = useState(false);
+  const handleAiAnalyzeBug = async () => {
+    if (!issue) return;
+    setAnalyzingBug(true);
+    try {
+      const response = await api.post('/ai/analyze-bug', {
+        title: issue.title,
+        steps_to_reproduce: issue.description || '',
+        environment: 'Staging'
+      });
+      // Append suggested fix as a comment
+      const commentRes = await api.post(`/tickets/${issue.uuid}/comments`, {
+        body: response.data.data.analysis
+      });
+      setComments([commentRes.data.data, ...comments]);
+      alert('AI Bug Analysis successfully appended to ticket comments!');
+    } catch (err) {
+      console.error('Failed to analyze bug', err);
+    } finally {
+      setAnalyzingBug(false);
     }
   };
 
@@ -868,18 +910,43 @@ export const IssueDetailModal: React.FC<IssueDetailModalProps> = ({ isOpen, onCl
                   {/* Description editing block */}
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                      <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Description</h3>
-                      {!isEditingDesc && (
-                        <button 
-                          onClick={() => {
-                            setTempDesc(issue.description || '');
-                            setIsEditingDesc(true);
-                          }}
-                          className="text-xs text-indigo-600 hover:text-indigo-800 font-bold transition-colors"
+                      <h3 className="text-[10px] font-black text-slate-300 uppercase tracking-widest flex items-center gap-1.5">
+                        Description
+                        {generatingAiDesc && <Loader2 className="w-3 h-3 text-indigo-500 animate-spin" />}
+                      </h3>
+                      <div className="flex items-center gap-3">
+                        {issue.type === 'Bug' && (
+                          <button
+                            type="button"
+                            onClick={handleAiAnalyzeBug}
+                            disabled={analyzingBug}
+                            className="text-xs text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1 transition-colors"
+                            title="Analyze bug parameters with Gemini AI"
+                          >
+                            <Sparkles className="w-3 h-3" /> {analyzingBug ? 'Analyzing...' : 'Analyze Bug'}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleAiGenerateDesc}
+                          disabled={generatingAiDesc}
+                          className="text-xs text-purple-600 hover:text-purple-800 font-bold flex items-center gap-1 transition-colors"
+                          title="Generate description with Gemini AI"
                         >
-                          Edit
+                          <Sparkles className="w-3 h-3" /> Generate with AI
                         </button>
-                      )}
+                        {!isEditingDesc && (
+                          <button 
+                            onClick={() => {
+                              setTempDesc(issue.description || '');
+                              setIsEditingDesc(true);
+                            }}
+                            className="text-xs text-indigo-600 hover:text-indigo-800 font-bold transition-colors"
+                          >
+                            Edit
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {isEditingDesc ? (
                       <div className="space-y-3">

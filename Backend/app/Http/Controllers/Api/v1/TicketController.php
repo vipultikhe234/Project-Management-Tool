@@ -41,9 +41,7 @@ class TicketController extends Controller
      */
     public function show(string $uuid)
     {
-        $ticket = Ticket::where('uuid', $uuid)
-            ->with(['project.organization', 'assignee', 'reporter', 'comments.user', 'attachments.user', 'subtasks', 'workLogs.user'])
-            ->firstOrFail();
+        $ticket = $this->ticketService->findByUuid($uuid);
         return new TicketResource($ticket);
     }
 
@@ -52,7 +50,7 @@ class TicketController extends Controller
      */
     public function update(TicketRequest $request, string $uuid)
     {
-        $ticket = Ticket::where('uuid', $uuid)->firstOrFail();
+        $ticket = $this->ticketService->findByUuid($uuid, []);
         $ticket = $this->ticketService->updateTicket($ticket, $request->validated(), $request->user());
         return new TicketResource($ticket);
     }
@@ -62,7 +60,7 @@ class TicketController extends Controller
      */
     public function destroy(string $uuid)
     {
-        $ticket = Ticket::where('uuid', $uuid)->firstOrFail();
+        $ticket = $this->ticketService->findByUuid($uuid, []);
         $this->ticketService->deleteTicket($ticket);
         return response()->json(['message' => 'Ticket deleted successfully']);
     }
@@ -78,17 +76,11 @@ class TicketController extends Controller
                 'project.organization',
                 'assignee',
                 'reporter',
-                'comments',
-                'attachments',
                 'sprint',
                 'parent',
                 'epic',
-                'subtasks',
-                'workLogs.user',
-                'starredByUsers' => function ($q) use ($user) {
-                    $q->where('users.id', $user->id);
-                }
             ])
+            ->withCount('comments')
             ->paginate(50);
         return TicketResource::collection($tickets);
     }
@@ -104,17 +96,11 @@ class TicketController extends Controller
                 'project.organization',
                 'assignee',
                 'reporter',
-                'comments',
-                'attachments',
                 'sprint',
                 'parent',
                 'epic',
-                'subtasks',
-                'workLogs.user',
-                'starredByUsers' => function ($q) use ($user) {
-                    $q->where('users.id', $user->id);
-                }
             ])
+            ->withCount('comments')
             ->take(10)
             ->get();
         return TicketResource::collection($tickets);
@@ -125,17 +111,9 @@ class TicketController extends Controller
      */
     public function toggleStar(Request $request, string $uuid)
     {
-        $ticket = Ticket::where('uuid', $uuid)->firstOrFail();
+        $ticket = $this->ticketService->findByUuid($uuid, []);
         $user = $request->user();
-        
-        $exists = $user->starredTickets()->where('ticket_id', $ticket->id)->exists();
-        if ($exists) {
-            $user->starredTickets()->detach($ticket->id);
-            $starred = false;
-        } else {
-            $user->starredTickets()->attach($ticket->id);
-            $starred = true;
-        }
+        $starred = $this->ticketService->toggleStar($ticket, $user);
 
         return response()->json([
             'message' => $starred ? 'Ticket starred' : 'Ticket unstarred',
@@ -148,18 +126,9 @@ class TicketController extends Controller
      */
     public function recordView(Request $request, string $uuid)
     {
-        $ticket = Ticket::where('uuid', $uuid)->firstOrFail();
+        $ticket = $this->ticketService->findByUuid($uuid, []);
         $user = $request->user();
-
-        // Update or insert recently viewed record
-        $user->recentlyViewedTickets()->syncWithoutDetaching([
-            $ticket->id => ['viewed_at' => now()]
-        ]);
-
-        // Touch the pivot timestamp or force update
-        $user->recentlyViewedTickets()->updateExistingPivot($ticket->id, [
-            'viewed_at' => now()
-        ]);
+        $this->ticketService->recordView($ticket, $user);
 
         return response()->json(['message' => 'View recorded successfully']);
     }
@@ -169,7 +138,7 @@ class TicketController extends Controller
      */
     public function getActivityLogs(string $uuid)
     {
-        $ticket = Ticket::where('uuid', $uuid)->firstOrFail();
+        $ticket = $this->ticketService->findByUuid($uuid, []);
         $logs = \App\Models\ActivityLog::where('target_type', 'Ticket')
             ->where('target_id', $ticket->id)
             ->with('user')
@@ -204,7 +173,7 @@ class TicketController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        $ticket = Ticket::where('uuid', $ticketUuid)->firstOrFail();
+        $ticket = $this->ticketService->findByUuid($ticketUuid, []);
         $user = $request->user();
 
         $workLog = \App\Models\TicketWorkLog::create([
@@ -227,7 +196,9 @@ class TicketController extends Controller
             'target_id' => $ticket->id,
         ]);
 
-        return new TicketResource($ticket->load(['project', 'assignee', 'reporter', 'comments.user', 'attachments.user', 'subtasks', 'workLogs.user']));
+        // Reload full details
+        $ticket = $this->ticketService->findByUuid($ticketUuid);
+        return new TicketResource($ticket);
     }
 
     /**
@@ -262,7 +233,8 @@ class TicketController extends Controller
             'target_id' => $ticket->id,
         ]);
 
-        return new TicketResource($ticket->load(['project', 'assignee', 'reporter', 'comments.user', 'attachments.user', 'subtasks', 'workLogs.user']));
+        $ticket = $this->ticketService->findByUuid($ticket->uuid);
+        return new TicketResource($ticket);
     }
 
     /**
@@ -288,7 +260,8 @@ class TicketController extends Controller
             'target_id' => $ticket->id,
         ]);
 
-        return new TicketResource($ticket->load(['project', 'assignee', 'reporter', 'comments.user', 'attachments.user', 'subtasks', 'workLogs.user']));
+        $ticket = $this->ticketService->findByUuid($ticket->uuid);
+        return new TicketResource($ticket);
     }
 
     /**

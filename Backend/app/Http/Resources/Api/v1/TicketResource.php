@@ -79,7 +79,7 @@ class TicketResource extends JsonResource
                     ],
                 ];
             }),
-            'comments_count' => $this->relationLoaded('comments') ? $this->comments->count() : $this->comments()->count(),
+            'comments_count' => $this->relationLoaded('comments') ? $this->comments->count() : ($this->comments_count ?? 0),
             'comments' => $this->when($this->relationLoaded('comments') && $request->is('*/tickets/*') && !$request->is('*/tickets'), function () {
                 return $this->comments->map(function ($comment) {
                     return [
@@ -97,7 +97,7 @@ class TicketResource extends JsonResource
             'is_starred' => $request->user() ? (
                 $this->relationLoaded('starredByUsers') 
                     ? $this->starredByUsers->contains('id', $request->user()->id) 
-                    : $this->starredByUsers()->where('user_id', $request->user()->id)->exists()
+                    : false
             ) : false,
             'created_at' => $this->created_at->toDateTimeString(),
             'updated_at' => $this->updated_at->toDateTimeString(),

@@ -122,8 +122,8 @@ export const KanbanBoard: React.FC = () => {
   const activeSprint = projectSprints.find(s => s.status === 'active');
   const hasActiveSprint = activeProject?.uuid === 'all' || !!activeSprint;
 
-  // Base tickets currently on the board (filtered by active project and sprint, before user filtering)
   const baseBoardTickets = localTickets.filter(t => {
+    if (t.type === 'Epic') return false;
     if (activeProject?.uuid !== 'all' && t.project?.uuid !== activeProject?.uuid) {
       return false;
     }
@@ -151,6 +151,7 @@ export const KanbanBoard: React.FC = () => {
   }, [baseBoardTickets]);
 
   const filteredTickets = localTickets.filter(t => {
+    if (t.type === 'Epic') return false;
     // Filter by project if not 'all'
     if (activeProject?.uuid !== 'all' && t.project?.uuid !== activeProject?.uuid) {
       return false;
@@ -260,35 +261,6 @@ export const KanbanBoard: React.FC = () => {
       {/* Combined Header & Filters Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-5">
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-          {/* Project Switcher Select */}
-          <div className="relative w-full sm:w-48 shrink-0">
-            <select 
-              value={activeProject?.uuid}
-              onChange={(e) => {
-                if (e.target.value === 'all') {
-                  const allMembers = Array.from(
-                    new Map(projects.flatMap(p => p.members || []).map(m => [m.uuid, m])).values()
-                  );
-                  setActiveProject({
-                    uuid: 'all',
-                    key: 'ALL',
-                    name: 'All Projects',
-                    boards: [],
-                    members: allMembers
-                  } as any);
-                } else {
-                  const found = projects.find(p => p.uuid === e.target.value);
-                  if (found) setActiveProject(found);
-                }
-              }}
-              className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 shadow-sm cursor-pointer"
-            >
-              {projects.length > 1 && <option value="all">All Projects</option>}
-              {projects.map(p => (
-                <option key={p.uuid} value={p.uuid}>{p.name}</option>
-              ))}
-            </select>
-          </div>
 
           {/* Search Input */}
           <div className="relative w-full sm:w-64">

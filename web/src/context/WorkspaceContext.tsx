@@ -69,7 +69,7 @@ interface WorkspaceContextProps {
   epics: TicketType[];
   loading: boolean;
   setActiveProject: (project: ProjectType | null) => void;
-  refreshWorkspaceData: () => Promise<void>;
+  refreshWorkspaceData: (isBackground?: boolean) => Promise<void>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextProps | undefined>(undefined);
@@ -86,10 +86,14 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const user = userString ? JSON.parse(userString) : null;
   const orgUuid = localStorage.getItem('selected_org_uuid') || user?.organizations?.[0]?.uuid || '';
 
-  const refreshWorkspaceData = async () => {
+  const refreshWorkspaceData = async (isBackground = false) => {
     if (!orgUuid) {
       setLoading(false);
       return;
+    }
+    // Only show full loading blocker if not loading in the background
+    if (!isBackground && projects.length === 0) {
+      setLoading(true);
     }
     try {
       const response = await api.get('/workspace/bootstrap', {
@@ -134,7 +138,14 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   useEffect(() => {
-    refreshWorkspaceData();
+    refreshWorkspaceData(false);
+
+    // Background AJAX polling every 20 seconds to keep board and backlog updated asynchronously
+    const interval = setInterval(() => {
+      refreshWorkspaceData(true);
+    }, 20000);
+
+    return () => clearInterval(interval);
   }, [orgUuid]);
 
   return (

@@ -13,9 +13,11 @@ class SprintRequest extends FormRequest
 
     public function rules(): array
     {
+        $isUpdate = $this->isMethod('PUT') || $this->isMethod('PATCH');
+
         return [
-            'board_uuid' => 'required_without:uuid|exists:boards,uuid',
-            'name' => 'required|string|max:255',
+            'board_uuid' => $isUpdate ? 'nullable|exists:boards,uuid' : 'required|exists:boards,uuid',
+            'name' => ($isUpdate ? 'sometimes' : 'required') . '|string|max:255',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'goal' => 'nullable|string',
