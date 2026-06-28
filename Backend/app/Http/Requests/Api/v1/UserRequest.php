@@ -49,19 +49,16 @@ class UserRequest extends FormRequest
             }
         }
 
-        // 3. Fallback: segment 4 (e.g., api/v1/users/{uuid})
+        // 3. Fallback: Scan all URL segments for a valid UUID pattern
         if (!$userId) {
-            $segment = $this->segment(4);
-            if ($segment && is_string($segment)) {
-                $userId = User::where('uuid', $segment)->first()?->id;
-            }
-        }
-
-        // 4. Fallback: segment 3 (in case URL prefix differs)
-        if (!$userId) {
-            $segment = $this->segment(3);
-            if ($segment && is_string($segment)) {
-                $userId = User::where('uuid', $segment)->first()?->id;
+            foreach ($this->segments() as $segment) {
+                if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $segment)) {
+                    $found = User::where('uuid', $segment)->first();
+                    if ($found) {
+                        $userId = $found->id;
+                        break;
+                    }
+                }
             }
         }
 
