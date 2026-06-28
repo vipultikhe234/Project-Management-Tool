@@ -332,8 +332,7 @@ export const Projects: React.FC = () => {
 
     try {
       await api.post(`/projects/${selectedProject.uuid}/members`, {
-        user_uuid: addMemberForm.user_uuid,
-        role_id: parseInt(addMemberForm.role_id)
+        user_uuid: addMemberForm.user_uuid
       });
       showToast('Team member added to the project!', 'success');
       
@@ -756,36 +755,19 @@ export const Projects: React.FC = () => {
                         </div>
                       )}
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Select User</label>
-                          <select
-                            value={addMemberForm.user_uuid}
-                            onChange={(e) => setAddMemberForm({...addMemberForm, user_uuid: e.target.value})}
-                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 text-xs font-medium"
-                            required
-                          >
-                            <option value="">-- Choose User --</option>
-                            {users.map(u => (
-                              <option key={u.uuid} value={u.uuid}>{u.name} ({u.email})</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Assign Role</label>
-                          <select
-                            value={addMemberForm.role_id}
-                            onChange={(e) => setAddMemberForm({...addMemberForm, role_id: e.target.value})}
-                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 text-xs font-medium"
-                            required
-                          >
-                            <option value="">-- Choose Role --</option>
-                            {roles.map(r => (
-                              <option key={r.id} value={r.id}>{r.name}</option>
-                            ))}
-                          </select>
-                        </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Select User</label>
+                        <select
+                          value={addMemberForm.user_uuid}
+                          onChange={(e) => setAddMemberForm({...addMemberForm, user_uuid: e.target.value})}
+                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/10 text-xs font-medium"
+                          required
+                        >
+                          <option value="">-- Choose User --</option>
+                          {users.map(u => (
+                            <option key={u.uuid} value={u.uuid}>{u.name} ({u.email})</option>
+                          ))}
+                        </select>
                       </div>
 
                       <button

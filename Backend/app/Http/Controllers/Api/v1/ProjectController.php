@@ -90,14 +90,18 @@ class ProjectController extends Controller
     {
         $request->validate([
             'user_uuid' => 'required|exists:users,uuid',
-            'role_id' => 'required|exists:roles,id',
+            'role_id' => 'nullable|exists:roles,id',
         ]);
 
         $project = $this->projectService->findByUuid($uuid);
+        
+        $user = \App\Models\User::where('uuid', $request->input('user_uuid'))->firstOrFail();
+        $roleId = $request->input('role_id') ?? $user->role_id;
+
         $added = $this->projectService->addMember(
             $project, 
             $request->input('user_uuid'), 
-            $request->input('role_id')
+            (int)$roleId
         );
 
         if (!$added) {
