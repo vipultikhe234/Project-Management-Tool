@@ -42,7 +42,7 @@ export const Header: React.FC = () => {
   const isOrgAdmin = user.role?.slug === 'org_admin' || user.role?.id === 2;
   const isUser = user.role?.slug === 'org_user' || user.role?.id === 3;
 
-  useEffect(() => {
+  const fetchHeaderOrgs = () => {
     if (isAdmin) {
       api.get('/organizations')
         .then(response => {
@@ -73,6 +73,15 @@ export const Header: React.FC = () => {
         localStorage.setItem('selected_org_uuid', userOrgUuid);
       }
     }
+  };
+
+  useEffect(() => {
+    fetchHeaderOrgs();
+
+    // Listen for workspace updates (org/project create/delete)
+    const handleWorkspaceUpdate = () => fetchHeaderOrgs();
+    window.addEventListener('workspace-updated', handleWorkspaceUpdate);
+    return () => window.removeEventListener('workspace-updated', handleWorkspaceUpdate);
   }, [isAdmin]);
 
   const handleOrgChange = (e: React.ChangeEvent<HTMLSelectElement>) => {

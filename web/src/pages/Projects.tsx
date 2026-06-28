@@ -272,6 +272,8 @@ export const Projects: React.FC = () => {
       setCreateModalOpen(false);
       setNewProject({ name: '', key: '', type: 'kanban', description: '' });
       fetchProjects();
+      // Notify sidebar to refresh project lists
+      window.dispatchEvent(new Event('workspace-updated'));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to register new project. Ensure the key is unique.');
     } finally {
@@ -286,6 +288,8 @@ export const Projects: React.FC = () => {
       await api.delete(`/projects/${uuid}`);
       showToast('Project deleted successfully.', 'success');
       fetchProjects();
+      // Notify sidebar to refresh project lists
+      window.dispatchEvent(new Event('workspace-updated'));
     } catch (err: any) {
       showToast('Failed to delete project.', 'error');
     }

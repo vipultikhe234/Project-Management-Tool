@@ -74,6 +74,8 @@ export const Organizations: React.FC = () => {
       }
       setIsModalOpen(false);
       fetchOrganizations();
+      // Notify sidebar/header to refresh org lists
+      window.dispatchEvent(new Event('workspace-updated'));
     } catch (err: any) {
       alert(err.response?.data?.message || 'Something went wrong');
     } finally {

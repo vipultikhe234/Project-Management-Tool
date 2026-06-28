@@ -37,7 +37,7 @@ const iconMap: Record<string, React.ComponentType<any>> = {
 
 export const Sidebar: React.FC = () => {
   const location = useLocation();
-  const { projects, activeProject, setActiveProject } = useWorkspace();
+  const { projects, activeProject, setActiveProject, refreshWorkspaceData } = useWorkspace();
   const [organizations, setOrganizations] = useState<any[]>([]);
   const [loadingOrgs, setLoadingOrgs] = useState(true);
   
@@ -70,8 +70,7 @@ export const Sidebar: React.FC = () => {
     user.role === 'ADMIN' ||
     (typeof user.role === 'object' && user.role?.name?.toLowerCase() === 'admin');
 
-  // Load organizations for workspace switcher and revalidate user details from /me
-  useEffect(() => {
+  const fetchOrganizations = () => {
     if (isAdmin) {
       setLoadingOrgs(true);
       api.get('/organizations')
@@ -90,6 +89,11 @@ export const Sidebar: React.FC = () => {
       }
       setLoadingOrgs(false);
     }
+  };
+
+  // Load organizations for workspace switcher and revalidate user details from /me
+  useEffect(() => {
+    fetchOrganizations();
 
     // Revalidate user details from /me to fetch fresh permissions & modules hierarchy
     api.get('/me')
@@ -101,6 +105,14 @@ export const Sidebar: React.FC = () => {
       .catch(err => {
         console.error('Failed to revalidate user details in sidebar:', err);
       });
+
+    // Listen for workspace updates (org/project create/delete)
+    const handleWorkspaceUpdate = () => {
+      fetchOrganizations();
+      refreshWorkspaceData(true);
+    };
+    window.addEventListener('workspace-updated', handleWorkspaceUpdate);
+    return () => window.removeEventListener('workspace-updated', handleWorkspaceUpdate);
   }, []);
 
   const handleOrgChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
