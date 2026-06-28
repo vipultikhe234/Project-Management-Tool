@@ -1,0 +1,66 @@
+name: Deploy SprintNIX Backend to Render
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Laravel Project Structure
+        run: |
+          if [ ! -f "Backend/.env.example" ]; then
+            echo "Error: Backend/.env.example is missing!"
+            exit 1
+          fi
+          if [ ! -f "Backend/composer.json" ]; then
+            echo "Error: Backend/composer.json is missing!"
+            exit 1
+          fi
+          if [ ! -f "Backend/artisan" ]; then
+            echo "Error: Backend/artisan is missing!"
+            exit 1
+          fi
+          echo "Project structure validated successfully."
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, ctype, iconv, mysql, zip
+          coverage: none
+
+      - name: Install Composer Dependencies
+        run: |
+          composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+        working-directory: Backend
+
+      - name: Run PHP Linting (Syntax Validation)
+        run: |
+          find app/ routes/ config/ database/ -type f -name "*.php" -print0 | xargs -0 -n 1 php -l
+        working-directory: Backend
+
+      - name: Trigger Render Deployment
+        run: |
+          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK }}" ]; then
+            echo "Error: RENDER_DEPLOY_HOOK secret is not set!"
+            exit 1
+          fi
+          
+          # Trigger deploy hook and capture HTTP response code
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.RENDER_DEPLOY_HOOK }}")
+          
+          echo "Render deployment response code: $RESPONSE"
+          
+          if [ "$RESPONSE" -ne 200 ] && [ "$RESPONSE" -ne 201 ] && [ "$RESPONSE" -ne 202 ]; then
+            echo "Error: Failed to trigger Render deployment. HTTP Code: $RESPONSE"
+            exit 1
+          fi
+          
+          echo "Render deployment triggered successfully."
