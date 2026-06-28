@@ -128,10 +128,19 @@ export const UserManagement: React.FC = () => {
     e.preventDefault();
     setFormLoading(true);
     try {
+      // Strip empty organization_uuid to avoid validation failure
+      const payload = { ...formData };
+      if (!payload.organization_uuid) {
+        delete (payload as any).organization_uuid;
+      }
+      // Strip empty password on update to avoid overwriting
+      if (isEditing && !payload.password) {
+        delete (payload as any).password;
+      }
       if (isEditing && selectedUser) {
-        await api.put(`/users/${selectedUser.uuid}`, formData);
+        await api.put(`/users/${selectedUser.uuid}`, payload);
       } else {
-        await api.post('/users', formData);
+        await api.post('/users', payload);
       }
       setIsModalOpen(false);
       fetchData();
