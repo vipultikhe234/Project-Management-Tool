@@ -52,11 +52,13 @@ export const Header: React.FC = () => {
           // If selectedOrgUuid is not set, or is 'all', or is not in the list of fetched organizations, set it to the first organization
           const currentStored = localStorage.getItem('selected_org_uuid');
           const isValidOrg = orgs.some((org: any) => org.uuid === currentStored);
-          if (!currentStored || currentStored === 'all' || !isValidOrg) {
+          if ((!currentStored || currentStored === 'all' || !isValidOrg) && orgs.length > 0) {
             const defaultOrgUuid = orgs[0]?.uuid || '';
-            setSelectedOrgUuid(defaultOrgUuid);
-            localStorage.setItem('selected_org_uuid', defaultOrgUuid);
-            window.location.reload();
+            if (defaultOrgUuid && defaultOrgUuid !== currentStored) {
+              setSelectedOrgUuid(defaultOrgUuid);
+              localStorage.setItem('selected_org_uuid', defaultOrgUuid);
+              window.location.reload();
+            }
           }
         })
         .catch(err => {
