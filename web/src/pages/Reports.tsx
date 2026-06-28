@@ -30,6 +30,7 @@ import {
 import api from '../lib/api';
 import { cn } from '../lib/utils';
 import { IssueDetailModal } from '../components/layout/IssueDetailModal';
+import { useWorkspace } from '../context/WorkspaceContext';
 
 interface ProjectMeta {
   uuid: string;
@@ -115,8 +116,9 @@ interface SummaryData {
 }
 
 export const Reports: React.FC = () => {
+  const { activeProject } = useWorkspace();
   // Filter States
-  const [selectedProject, setSelectedProject] = useState<string>(activeProject?.uuid || 'all');
+  const [selectedProject, setSelectedProject] = useState<string>('all');
   const [selectedSprint, setSelectedSprint] = useState<string>('all');
   const [selectedEpic, setSelectedEpic] = useState<string>('all');
   const [selectedUser, setSelectedUser] = useState<string>('all');
