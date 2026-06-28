@@ -422,23 +422,25 @@ export const Backlog: React.FC = () => {
             return (
               <section key={sprint.uuid} className="space-y-3">
                 {/* Sprint Header Bar */}
-                <div className="flex items-center justify-between px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-xl shadow-sm transition-all hover:bg-slate-50">
-                  <div className="flex items-center gap-3">
-                    <ChevronDown className="w-4 h-4 text-slate-400 cursor-pointer hover:text-slate-600" />
-                    <span className="font-bold text-slate-800 text-sm">{sprint.name}</span>
-                    <span className="text-xs text-slate-400 font-semibold bg-slate-100 px-2 py-0.5 rounded-md flex items-center gap-1">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-xl shadow-sm transition-all hover:bg-slate-50">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <div className="flex items-center gap-1.5">
+                      <ChevronDown className="w-4 h-4 text-slate-400 cursor-pointer hover:text-slate-600 shrink-0" />
+                      <span className="font-bold text-slate-800 text-xs sm:text-sm">{sprint.name}</span>
+                    </div>
+                    <span className="text-[10px] sm:text-xs text-slate-400 font-semibold bg-slate-100 px-2 py-0.5 rounded-md flex items-center gap-1 shrink-0">
                       {sprint.start_date && sprint.end_date ? (
                         `${new Date(sprint.start_date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})} - ${new Date(sprint.end_date).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}`
                       ) : (
                         <span className="text-indigo-600 hover:underline cursor-pointer" onClick={() => setEditingSprint(sprint)}>Add dates</span>
                       )}
                     </span>
-                    <span className="text-xs text-slate-400 font-medium">({sprintTickets.length} work items)</span>
+                    <span className="text-[10px] sm:text-xs text-slate-400 font-medium shrink-0">({sprintTickets.length} items)</span>
                   </div>
                   
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 w-full sm:w-auto border-t border-slate-100 sm:border-t-0 pt-2 sm:pt-0">
                     {/* Status Badges */}
-                    <div className="flex items-center gap-1.5 mr-2">
+                    <div className="flex items-center gap-1.5">
                       <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-[10px] font-bold" title="To Do">{todoCount}</span>
                       <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold" title="In Progress">{inProgressCount}</span>
                       <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold" title="Done">{doneCount}</span>
@@ -522,7 +524,7 @@ export const Backlog: React.FC = () => {
                           onClick={() => setSelectedIssueUuid(ticket.uuid)}
                           draggable="true"
                           onDragStart={(e) => handleDragStart(e, ticket.uuid)}
-                          className="flex justify-between items-center px-6 py-2.5 hover:bg-slate-50 transition-all cursor-pointer group border-l-2 border-l-transparent hover:border-l-indigo-600"
+                          className="flex justify-between items-center px-3 md:px-6 py-2.5 hover:bg-slate-50 transition-all cursor-pointer group border-l-2 border-l-transparent hover:border-l-indigo-600"
                         >
                           {/* Left aligned: grip, type, key, title, epic */}
                           <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -655,16 +657,16 @@ export const Backlog: React.FC = () => {
 
           <section className="space-y-3 pt-6 border-t border-slate-200">
             {/* Backlog Header Bar */}
-            <div className="flex items-center justify-between px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-xl shadow-sm transition-all hover:bg-slate-50">
-              <div className="flex items-center gap-3">
-                <ChevronDown className="w-4 h-4 text-slate-400 cursor-pointer hover:text-slate-600" />
-                <span className="font-bold text-slate-800 text-sm">Backlog</span>
-                <span className="text-xs text-slate-400 font-medium">({backlogTickets.length} work items)</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-xl shadow-sm transition-all hover:bg-slate-50">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <ChevronDown className="w-4 h-4 text-slate-400 cursor-pointer hover:text-slate-600 shrink-0" />
+                <span className="font-bold text-slate-800 text-xs sm:text-sm">Backlog</span>
+                <span className="text-[10px] sm:text-xs text-slate-400 font-medium shrink-0">({backlogTickets.length} items)</span>
               </div>
               
-              <div className="flex items-center gap-4">
+              <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 w-full sm:w-auto border-t border-slate-100 sm:border-t-0 pt-2 sm:pt-0">
                 {/* Status Badges */}
-                <div className="flex items-center gap-1.5 mr-2">
+                <div className="flex items-center gap-1.5">
                   <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-[10px] font-bold" title="To Do">{backlogTodoCount}</span>
                   <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-[10px] font-bold" title="In Progress">{backlogInProgressCount}</span>
                   <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-bold" title="Done">{backlogDoneCount}</span>
@@ -697,7 +699,7 @@ export const Backlog: React.FC = () => {
                       onClick={() => setSelectedIssueUuid(item.uuid)}
                       draggable="true"
                       onDragStart={(e) => handleDragStart(e, item.uuid)}
-                      className="flex justify-between items-center px-6 py-2.5 hover:bg-slate-50 transition-all cursor-pointer group border-l-2 border-l-transparent hover:border-l-indigo-600"
+                      className="flex justify-between items-center px-3 md:px-6 py-2.5 hover:bg-slate-50 transition-all cursor-pointer group border-l-2 border-l-transparent hover:border-l-indigo-600"
                     >
                       {/* Left aligned: grip, type, key, title, epic */}
                       <div className="flex items-center gap-3 min-w-0 flex-1">
