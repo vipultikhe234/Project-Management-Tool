@@ -92,7 +92,7 @@ export const Login: React.FC = () => {
       <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-500/5 rounded-full blur-[120px]"></div>
       
       <div className="w-full max-w-[440px] z-10">
-        <div className="bg-white border border-slate-200 rounded-[2.5rem] p-10 shadow-xl">
+        <div className="bg-white border border-slate-200 rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-10 shadow-xl">
           <div className="text-center mb-10">
             <div className="relative inline-block mb-6">
                 <div className="relative w-20 h-20 bg-gradient-to-br from-indigo-600 to-blue-600 rounded-3xl flex items-center justify-center shadow-lg transform -rotate-3">

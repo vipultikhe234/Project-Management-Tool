@@ -60,7 +60,7 @@ export const Register: React.FC = () => {
       <div className="absolute bottom-[-15%] left-[-10%] w-[50%] h-[50%] bg-indigo-600/10 rounded-full blur-[120px] animate-pulse delay-700"></div>
 
       <div className="w-full max-w-[480px] z-10">
-        <div className="bg-slate-900/40 backdrop-blur-2xl border border-white/5 rounded-[2.5rem] p-10 shadow-2xl shadow-black/50">
+        <div className="bg-slate-900/40 backdrop-blur-2xl border border-white/5 rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-10 shadow-2xl shadow-black/50">
           <div className="text-center mb-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full mb-6">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-400" />

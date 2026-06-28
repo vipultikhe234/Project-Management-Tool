@@ -700,10 +700,10 @@ export const Projects: React.FC = () => {
             </div>
 
             {/* Tab Bar */}
-            <div className="flex border-b border-slate-100 px-6 bg-slate-50/30">
+            <div className="flex border-b border-slate-100 px-4 md:px-6 bg-slate-50/30 overflow-x-auto scrollbar-none whitespace-nowrap">
               <button 
                 onClick={() => setActiveModalTab('members')}
-                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-1.5 ${
+                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-1.5 shrink-0 ${
                   activeModalTab === 'members' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'
                 }`}
               >
@@ -711,7 +711,7 @@ export const Projects: React.FC = () => {
               </button>
               <button 
                 onClick={() => setActiveModalTab('okrs')}
-                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-1.5 ${
+                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-1.5 shrink-0 ${
                   activeModalTab === 'okrs' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'
                 }`}
               >
@@ -719,7 +719,7 @@ export const Projects: React.FC = () => {
               </button>
               <button 
                 onClick={() => setActiveModalTab('risks')}
-                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-1.5 ${
+                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-1.5 shrink-0 ${
                   activeModalTab === 'risks' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'
                 }`}
               >
@@ -727,7 +727,7 @@ export const Projects: React.FC = () => {
               </button>
               <button 
                 onClick={() => setActiveModalTab('health')}
-                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-1.5 ${
+                className={`py-3 px-4 text-xs font-bold uppercase tracking-wider border-b-2 transition-all flex items-center gap-1.5 shrink-0 ${
                   activeModalTab === 'health' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'
                 }`}
               >

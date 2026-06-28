@@ -560,8 +560,23 @@ export const Backlog: React.FC = () => {
                           </div>
 
                           {/* Right aligned: status, estimate, priority, assignee */}
-                          <div className="flex items-center gap-3 shrink-0 ml-4" onClick={(e) => e.stopPropagation()}>
-                            {/* Status Dropdown Pill */}
+                          <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-2 sm:ml-4" onClick={(e) => e.stopPropagation()}>
+                            {/* Status Indicator Dot (Mobile Only) */}
+                            <span 
+                              className={cn(
+                                "w-2 h-2 rounded-full sm:hidden shrink-0",
+                                ticket.status === 'Done' ? "bg-emerald-500" :
+                                ticket.status === 'In Progress' ? "bg-indigo-500" :
+                                ticket.status === 'In Review ( CR )' ? "bg-amber-500" :
+                                ticket.status === 'Ready Reopen' ? "bg-rose-500" :
+                                ticket.status === 'Ready for QA' ? "bg-purple-500" :
+                                ticket.status === 'QA' ? "bg-sky-500" :
+                                "bg-slate-400"
+                              )} 
+                              title={ticket.status} 
+                            />
+
+                            {/* Status Dropdown Pill (Desktop Only) */}
                             <select
                               value={ticket.status}
                               onChange={async (e) => {
@@ -575,7 +590,7 @@ export const Backlog: React.FC = () => {
                                   alert('Failed to update status');
                                 }
                               }}
-                              className="bg-slate-100 hover:bg-slate-200 text-slate-700 border-none font-bold uppercase text-[9px] rounded px-2.5 py-1 flex items-center gap-1.5 focus:outline-none cursor-pointer tracking-wider"
+                              className="hidden sm:inline-block bg-slate-100 hover:bg-slate-200 text-slate-700 border-none font-bold uppercase text-[9px] rounded px-2.5 py-1 focus:outline-none cursor-pointer tracking-wider"
                             >
                               <option value="To Do">To Do</option>
                               <option value="Ready Reopen">Ready Reopen</option>
@@ -720,8 +735,23 @@ export const Backlog: React.FC = () => {
                       </div>
 
                       {/* Right aligned: status, estimate, priority, assignee */}
-                      <div className="flex items-center gap-3 shrink-0 ml-4" onClick={(e) => e.stopPropagation()}>
-                        {/* Status Dropdown Pill */}
+                      <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-2 sm:ml-4" onClick={(e) => e.stopPropagation()}>
+                        {/* Status Indicator Dot (Mobile Only) */}
+                        <span 
+                          className={cn(
+                            "w-2 h-2 rounded-full sm:hidden shrink-0",
+                            item.status === 'Done' ? "bg-emerald-500" :
+                            item.status === 'In Progress' ? "bg-indigo-500" :
+                            item.status === 'In Review ( CR )' ? "bg-amber-500" :
+                            item.status === 'Ready Reopen' ? "bg-rose-500" :
+                            item.status === 'Ready for QA' ? "bg-purple-500" :
+                            item.status === 'QA' ? "bg-sky-500" :
+                            "bg-slate-400"
+                          )} 
+                          title={item.status} 
+                        />
+
+                        {/* Status Dropdown Pill (Desktop Only) */}
                         <select
                           value={item.status}
                           onChange={async (e) => {
@@ -735,7 +765,7 @@ export const Backlog: React.FC = () => {
                               alert('Failed to update status');
                             }
                           }}
-                          className="bg-slate-100 hover:bg-slate-200 text-slate-700 border-none font-bold uppercase text-[9px] rounded px-2.5 py-1 flex items-center gap-1.5 focus:outline-none cursor-pointer tracking-wider"
+                          className="hidden sm:inline-block bg-slate-100 hover:bg-slate-200 text-slate-700 border-none font-bold uppercase text-[9px] rounded px-2.5 py-1 focus:outline-none cursor-pointer tracking-wider"
                         >
                           <option value="To Do">To Do</option>
                           <option value="Ready Reopen">Ready Reopen</option>

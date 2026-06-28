@@ -391,14 +391,14 @@ export const KanbanBoard: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="flex gap-6 overflow-x-auto pb-10 scrollbar-premium">
+        <div className="flex gap-6 overflow-x-auto pb-10 scrollbar-premium snap-x snap-mandatory">
           {COLUMNS.map((col) => {
             const columnTickets = filteredTickets.filter(t => t.status.toLowerCase() === col.toLowerCase());
             
             return (
               <div 
                 key={col} 
-                className="flex-1 min-w-[320px] flex flex-col gap-4 bg-slate-50/50 p-3 rounded-2xl border border-dashed border-slate-200"
+                className="flex-1 min-w-[280px] sm:min-w-[320px] flex flex-col gap-4 bg-slate-50/50 p-3 rounded-2xl border border-dashed border-slate-200 snap-center animate-in fade-in duration-300"
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, col)}
               >
