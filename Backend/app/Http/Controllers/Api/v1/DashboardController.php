@@ -285,6 +285,7 @@ class DashboardController extends Controller
         $user = $request->user();
         $roleSlug = $user->role?->slug;
         $orgUuid = $request->query('organization_uuid');
+        $projectUuid = $request->query('project_uuid');
 
         if (!$orgUuid || $orgUuid === 'all') {
             if ($roleSlug !== 'admin') {
