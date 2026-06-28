@@ -31,7 +31,7 @@ class UserRequest extends FormRequest
             'email' => 'required|email|unique:users,email,' . ($userId ?? 'NULL'),
             'password' => $this->isMethod('POST') ? 'required|string|min:8' : 'nullable|string|min:8',
             'role_id' => 'required|exists:roles,id',
-            'organization_uuid' => 'sometimes|exists:organizations,uuid',
+            'organization_uuid' => 'sometimes|nullable|exists:organizations,uuid',
             'status' => 'sometimes|string|in:active,inactive,suspended,ACTIVE,INACTIVE,SUSPENDED',
         ];
     }
