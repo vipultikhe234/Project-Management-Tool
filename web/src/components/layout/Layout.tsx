@@ -1,18 +1,29 @@
+import React, { useState } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { Plus } from 'lucide-react';
 
 export const Layout: React.FC = () => {
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-slate-50 flex font-sans text-slate-900 overflow-x-hidden">
-      <Header />
+      <Header onToggleSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)} />
       <div className="flex pt-16 w-full">
-        <Sidebar />
-        <main className="flex-1 min-w-0 lg:ml-64 p-6 transition-all duration-300 bg-slate-50">
+        <Sidebar isOpen={isMobileSidebarOpen} onClose={() => setIsMobileSidebarOpen(false)} />
+        <main className="flex-1 min-w-0 lg:ml-64 p-4 md:p-6 transition-all duration-300 bg-slate-50">
           <Outlet />
         </main>
       </div>
+
+      {/* Backdrop overlay for mobile sidebar */}
+      {isMobileSidebarOpen && (
+        <div 
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-30 lg:hidden"
+        />
+      )}
 
       {/* Global Floating Action Button */}
       <Link 

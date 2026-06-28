@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Bell, Settings, HelpCircle, ChevronDown, LogOut, User as UserIcon, Building2, Plus } from 'lucide-react';
+import { Search, Bell, Settings, HelpCircle, ChevronDown, LogOut, User as UserIcon, Building2, Plus, Menu } from 'lucide-react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../../lib/api';
 import { GlobalCreateTicketModal } from './GlobalCreateTicketModal';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onToggleSidebar: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -100,9 +104,16 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="fixed top-0 w-full h-16 z-50 bg-white border-b border-slate-200 flex justify-between items-center px-8 shrink-0">
-      <div className="flex items-center gap-6">
-        <span className="text-xl font-bold tracking-tight text-slate-800 font-display">SprintNIX</span>
+    <header className="fixed top-0 w-full h-16 z-50 bg-white border-b border-slate-200 flex justify-between items-center px-4 md:px-8 shrink-0">
+      <div className="flex items-center gap-3 md:gap-6">
+        <button
+          onClick={onToggleSidebar}
+          className="lg:hidden p-1.5 -ml-1 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer shrink-0"
+          title="Toggle Navigation"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <span className="text-xl font-bold tracking-tight text-slate-800 font-display select-none">SprintNIX</span>
 
 
         {/* Global Create Button */}

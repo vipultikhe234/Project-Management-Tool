@@ -35,7 +35,12 @@ const iconMap: Record<string, React.ComponentType<any>> = {
   MessageSquare
 };
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
   const { projects, activeProject, setActiveProject, refreshWorkspaceData } = useWorkspace();
   const [organizations, setOrganizations] = useState<any[]>([]);
@@ -132,7 +137,10 @@ export const Sidebar: React.FC = () => {
   const modules: any[] = user.modules || [];
 
   return (
-    <aside className="fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-white flex flex-col shrink-0 z-40 hidden lg:flex border-r border-slate-200 shadow-sm">
+    <aside className={cn(
+      "fixed left-0 top-16 h-[calc(100vh-4rem)] w-64 bg-white flex flex-col shrink-0 z-40 border-r border-slate-200 shadow-sm transition-transform duration-200",
+      isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+    )}>
       
       {/* Top Section: Workspace & Project switcher dropdowns (Jira style) */}
       <div className="p-4 border-b border-slate-100 space-y-3.5 bg-slate-50/40">
@@ -169,6 +177,7 @@ export const Sidebar: React.FC = () => {
                 const found = projects.find(p => p.uuid === e.target.value);
                 if (found) {
                   setActiveProject(found);
+                  onClose();
                 }
               }}
               disabled={projects.length === 0}
@@ -223,6 +232,7 @@ export const Sidebar: React.FC = () => {
                     <NavLink
                       key={item.uuid}
                       to={item.route}
+                      onClick={onClose}
                       className={({ isActive }) => cn(
                         "flex items-center gap-2.5 px-4 py-2 text-xs font-semibold rounded-l-xl transition-all border-l-2",
                         isActive
